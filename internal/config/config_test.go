@@ -141,16 +141,19 @@ func TestDurationsAcceptBareSeconds(t *testing.T) {
 }
 
 func TestInvalidValuesAreRejectedNotDefaulted(t *testing.T) {
-	cases := map[string]struct{ name, value string }{
-		"listen address":      {"LISTEN_ADDR", "8080"},
-		"refresh too small":   {"REFRESH_INTERVAL", "100ms"},
-		"refresh nonsense":    {"REFRESH_INTERVAL", "soon"},
-		"negative stop":       {"STOP_TIMEOUT", "-5s"},
-		"stop far too large":  {"STOP_TIMEOUT", "3h"},
-		"unknown log level":   {"LOG_LEVEL", "verbose"},
+	cases := []struct {
+		label, name, value string
+	}{
+		{"listen address", "LISTEN_ADDR", "8080"},
+		{"refresh too small", "REFRESH_INTERVAL", "100ms"},
+		{"refresh nonsense", "REFRESH_INTERVAL", "soon"},
+		{"negative stop", "STOP_TIMEOUT", "-5s"},
+		{"stop far too large", "STOP_TIMEOUT", "3h"},
+		{"unknown log level", "LOG_LEVEL", "verbose"},
+		{"chat id list without a token is fine, but not this", "TELEGRAM_ALLOWED_CHAT_IDS", "abc"},
 	}
-	for label, testCase := range cases {
-		t.Run(label, func(t *testing.T) {
+	for _, testCase := range cases {
+		t.Run(testCase.label, func(t *testing.T) {
 			clearEnv(t)
 			t.Setenv(testCase.name, testCase.value)
 

@@ -202,9 +202,12 @@ Neither Go nor anything else needs to be installed — the toolchain runs in a
 throwaway container:
 
 ```bash
-# format check, vet and the full test suite
+# format, vet and run the full test suite
 docker run --rm -v "$PWD":/src -w /src golang:1-alpine \
-	sh -c 'gofmt -l . && go vet ./... && go test -race ./...'
+	sh -c 'gofmt -w . && go vet ./... && go test -race ./...'
+
+# see what the formatter changed
+git diff
 
 # build and run
 docker compose up -d --build && docker compose logs -f

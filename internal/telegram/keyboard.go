@@ -16,16 +16,18 @@ import (
 // change — "p:unless-stopped:a1b2c3d4e5f6", 29 bytes — leaving ample headroom.
 // callback_test.go asserts that.
 const (
-	verbOverview     = "l"
-	verbShow         = "c"
-	verbStart        = "on"
-	verbStop         = "off"
-	verbRestart      = "rst"
-	verbRecreateAsk  = "rc"
-	verbRecreateDo   = "rc!"
-	verbPolicy       = "p"
-	callbackSizeLimit = 64
+	verbOverview    = "l"
+	verbShow        = "c"
+	verbStart       = "on"
+	verbStop        = "off"
+	verbRestart     = "rst"
+	verbRecreateAsk = "rc"
+	verbRecreateDo  = "rc!"
+	verbPolicy      = "p"
 )
+
+// callbackSizeLimit is Telegram's hard cap on callback_data.
+const callbackSizeLimit = 64
 
 // maxOverviewButtons caps the button grid. Telegram tolerates large keyboards but
 // they become unusable, and a host with this many containers is better served by

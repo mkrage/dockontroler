@@ -236,18 +236,21 @@ func TestRenderOverviewEmptyHost(t *testing.T) {
 }
 
 func TestCommandParsing(t *testing.T) {
-	cases := map[string]string{
-		"/list":                    "/list",
-		"/list@dockontroler_bot":   "/list",
-		"  /LIST  ":                "/list",
-		"/start extra args":        "/start",
-		"hello there":              "",
-		"":                         "",
-		"not/a/command":            "",
+	cases := []struct {
+		input, want string
+	}{
+		{"/list", "/list"},
+		// Telegram appends the bot name in group chats.
+		{"/list@dockontroler_bot", "/list"},
+		{"  /LIST  ", "/list"},
+		{"/start extra args", "/start"},
+		{"hello there", ""},
+		{"", ""},
+		{"not/a/command", ""},
 	}
-	for input, want := range cases {
-		if got := command(input); got != want {
-			t.Errorf("command(%q) = %q, want %q", input, got, want)
+	for _, testCase := range cases {
+		if got := command(testCase.input); got != testCase.want {
+			t.Errorf("command(%q) = %q, want %q", testCase.input, got, testCase.want)
 		}
 	}
 }
