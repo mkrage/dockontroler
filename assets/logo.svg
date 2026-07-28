@@ -1,61 +1,64 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 152" width="470" height="152"
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 120" width="560" height="120"
      role="img" aria-label="doCKontroler">
 	<title>doCKontroler</title>
-	<desc>Wordmark: "doCK" and "er" form Docker and are tied together by a bracket
-	that hops over the middle; "Control" sits between them under its own bracket,
-	sharing the C and K.</desc>
+	<desc>A toggle switch in a rounded badge, followed by the wordmark. "doCK" and
+	"er" are heavy and carry the brand gradient so they read as Docker; "ontrol"
+	sits between them in a lighter weight and a warm accent, so Control reads as
+	nested inside it.</desc>
+
+	<defs>
+		<!-- userSpaceOnUse so the badge and the cut-out knob sample the same
+		     gradient: the knob then blends with what is behind it and reads as a
+		     hole rather than a separate shape. -->
+		<linearGradient id="markGradient" gradientUnits="userSpaceOnUse"
+		                x1="0" y1="8" x2="104" y2="112">
+			<stop class="g-from" offset="0"/>
+			<stop class="g-to" offset="1"/>
+		</linearGradient>
+
+		<!-- Spans the whole wordmark, so the two outer letter groups continue one
+		     sweep instead of each restarting the gradient. -->
+		<linearGradient id="wordGradient" gradientUnits="userSpaceOnUse"
+		                x1="128" y1="36" x2="520" y2="92">
+			<stop class="g-from" offset="0"/>
+			<stop class="g-to" offset="1"/>
+		</linearGradient>
+	</defs>
 
 	<style>
-		/* One file for both themes. The base palette is legible on white; the
-		   dark override lifts it for dark backgrounds, which is what GitHub uses
-		   when the reader's system is in dark mode. */
-		.dock { fill: #0E7C8C; }
-		.ctrl { fill: #C2410C; }
-		.tie-dock { stroke: #0E7C8C; }
-		.tie-ctrl { stroke: #C2410C; }
-		.label-dock { fill: #0E7C8C; }
-		.label-ctrl { fill: #C2410C; }
+		.g-from { stop-color: #0E7C8C; }
+		.g-to   { stop-color: #22A6BB; }
+		.inner  { fill: #EA6E1B; }
+		.knob   { fill: #FFFFFF; }
 
 		@media (prefers-color-scheme: dark) {
-			.dock, .label-dock { fill: #38BDD0; }
-			.ctrl, .label-ctrl { fill: #FB923C; }
-			.tie-dock { stroke: #38BDD0; }
-			.tie-ctrl { stroke: #FB923C; }
+			.g-from { stop-color: #2FB8CE; }
+			.g-to   { stop-color: #67E8F9; }
+			.inner  { fill: #FB923C; }
 		}
 
 		.word {
-			font-family: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono",
-			             Menlo, Consolas, "Liberation Mono", monospace;
-			font-size: 56px;
-			font-weight: 700;
-			letter-spacing: 0;
+			font-family: "Inter", "Inter Tight", "SF Pro Display",
+			             "Segoe UI Variable Display", "Segoe UI", Roboto,
+			             "Helvetica Neue", Arial, sans-serif;
+			font-size: 58px;
+			letter-spacing: -0.02em;
 		}
-		.label {
-			font-family: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
-			font-size: 13px;
-			font-weight: 600;
-			letter-spacing: 0.24em;
-			text-transform: uppercase;
-		}
-		.tie { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+		.outer { font-weight: 800; fill: url(#wordGradient); }
+		.inner { font-weight: 600; }
 	</style>
 
-	<!-- The outer word. The bracket rises over "doCK", hops across the middle and
-	     comes back down over "er", so the eye reads them as one word. -->
-	<path class="tie tie-dock" d="M 31 54 L 31 42 L 165 42 Q 268 18 371 42 L 437 42 L 437 54"/>
-	<text class="label label-dock" x="234" y="20" text-anchor="middle">docker</text>
+	<!-- The mark: a switch that is on. It says "control" without a metaphor to
+	     decode, and it survives being shrunk to a favicon. -->
+	<g>
+		<rect x="0" y="8" width="104" height="104" rx="28" fill="url(#markGradient)"/>
+		<rect class="knob" x="24" y="46" width="56" height="28" rx="14"/>
+		<circle cx="66" cy="60" r="9" fill="url(#markGradient)"/>
+	</g>
 
-	<!-- Letter groups are placed on a fixed 34px grid — monospace advance at this
-	     size — and pinned with textLength, so the brackets stay aligned whichever
-	     monospace font the reader's system supplies. -->
-	<text class="word" y="100">
-		<tspan class="dock" x="30" textLength="68" lengthAdjust="spacing">do</tspan><tspan
-		       class="dock" x="98" textLength="68" lengthAdjust="spacing">CK</tspan><tspan
-		       class="ctrl" x="166" textLength="204" lengthAdjust="spacing">ontrol</tspan><tspan
-		       class="dock" x="370" textLength="68" lengthAdjust="spacing">er</tspan>
+	<text class="word" x="128" y="80">
+		<tspan class="outer">doCK</tspan><tspan
+		       class="inner">ontrol</tspan><tspan
+		       class="outer">er</tspan>
 	</text>
-
-	<!-- The inner word, borrowing the C from "CK". -->
-	<path class="tie tie-ctrl" d="M 99 110 L 99 120 L 369 120 L 369 110"/>
-	<text class="label label-ctrl" x="234" y="142" text-anchor="middle">control</text>
 </svg>

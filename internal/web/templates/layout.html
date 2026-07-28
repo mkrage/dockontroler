@@ -11,10 +11,13 @@
 <body data-refresh-millis="{{.RefreshMillis}}">
 	<header class="topbar">
 		<!-- The name is two words sharing letters: doCK + er spell Docker around
-		     Control in the middle. Colouring the groups is the same idea as the
-		     logo in the README, without needing a second copy of the asset. -->
-		<h1 class="topbar__title"><span class="wm-dock">doCK</span><span
-			class="wm-ctrl">ontrol</span><span class="wm-dock">er</span></h1>
+		     Control in the middle. Weight and colour carry that, the same way the
+		     logo does, so no second copy of the wordmark asset is needed. -->
+		<h1 class="topbar__title">
+			<img class="topbar__mark" src="/static/favicon.svg?v={{.AssetVersion}}" alt="" width="22" height="22">
+			<span><span class="wm-dock">doCK</span><span
+				class="wm-ctrl">ontrol</span><span class="wm-dock">er</span></span>
+		</h1>
 		<div class="topbar__actions">
 			<!-- Filled in by app.js from the refreshed fragment; stays empty
 			     without JavaScript, where the list carries its own timestamp. -->

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120"
+     role="img" aria-label="doCKontroler">
+	<title>doCKontroler</title>
+	<desc>The mark on its own: a switch that is on, for use as an avatar or app
+	icon.</desc>
+
+	<defs>
+		<linearGradient id="markGradient" gradientUnits="userSpaceOnUse"
+		                x1="0" y1="0" x2="120" y2="120">
+			<stop class="g-from" offset="0"/>
+			<stop class="g-to" offset="1"/>
+		</linearGradient>
+	</defs>
+
+	<style>
+		.g-from { stop-color: #0E7C8C; }
+		.g-to   { stop-color: #22A6BB; }
+
+		@media (prefers-color-scheme: dark) {
+			.g-from { stop-color: #2FB8CE; }
+			.g-to   { stop-color: #67E8F9; }
+		}
+	</style>
+
+	<rect width="120" height="120" rx="30" fill="url(#markGradient)"/>
+	<rect x="26" y="45" width="68" height="32" rx="16" fill="#FFFFFF"/>
+	<!-- Filled with the same gradient in user space, so it reads as a hole in the
+	     white pill rather than as a separate circle. -->
+	<circle cx="78" cy="61" r="10.5" fill="url(#markGradient)"/>
+</svg>

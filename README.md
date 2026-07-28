@@ -1,5 +1,5 @@
 <p align="center">
-	<img src="assets/logo.svg" alt="doCKontroler" width="400">
+	<img src="assets/logo.svg" alt="doCKontroler" width="440">
 </p>
 
 <p align="center">
@@ -34,18 +34,20 @@ Portainer. This is the thing you keep open in a pinned tab.
 
 ## About the name
 
-The name is two words sharing letters:
+The name is two words sharing letters. `doCK` and `er` spell **Docker** around the
+outside; **Control** sits in the middle, borrowing the same `C` and `K`:
 
-```
-do CK ontrol er
-└──┬──┘      ┬     doCK … er  →  Docker
-   └── C ontrol ──┘            →  Control
-```
+<p align="center">
+	<img src="assets/logo-wordmark.svg" alt="doCKontroler" width="360">
+</p>
 
-`doCK` and `er` spell **Docker** around the outside; **Control** sits in the
-middle and borrows the same `C`/`K`. The logo colours the two groups and ties
-them together with brackets. The favicon is just `CK` — the letters both words
-share.
+The wordmark shows it with weight and colour rather than any kind of underline:
+the heavy gradient letters read forward as one word, the lighter warm ones sit
+behind them. The mark is a switch that is on — the whole tool in one glyph.
+
+Assets live in [`assets/`](assets): `logo.svg` (mark and wordmark),
+`logo-wordmark.svg`, `logo-mark.svg` (square, for avatars). All three are single
+files that adapt to dark mode on their own.
 
 ## Quick start
 

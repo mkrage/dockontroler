@@ -98,19 +98,31 @@ code {
 }
 
 .topbar__title {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
 	margin: 0;
-	font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-	font-size: 1.1rem;
-	font-weight: 700;
-	letter-spacing: 0;
+	font-size: 1.15rem;
+	letter-spacing: -0.02em;
 }
 
+/* Same idea as the logo: weight and colour separate the two interlocked words,
+   so no alignment-dependent decoration is needed. */
 .wm-dock {
 	color: var(--brand-dock);
+	font-weight: 800;
 }
 
 .wm-ctrl {
 	color: var(--brand-ctrl);
+	font-weight: 600;
+}
+
+.topbar__mark {
+	flex: none;
+	width: 22px;
+	height: 22px;
+	border-radius: 6px;
 }
 
 .topbar__actions {
