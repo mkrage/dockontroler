@@ -1,0 +1,81 @@
+# Example deployment. Copy to docker-compose.yml and adjust the marked lines.
+#
+#   docker compose up -d --build
+#
+# Read the security section of the README before exposing this anywhere. There is
+# no login: whoever can open the page can start, stop and replace every container
+# on this host.
+
+services:
+  dockontroler:
+    build: .
+    # Once you publish images, swap the build above for something like:
+    # image: ghcr.io/mkrage/dockontroler:latest
+    container_name: dockontroler
+    restart: unless-stopped
+
+    ports:
+      # CHANGE THIS to your server's LAN address. Binding to 0.0.0.0 (the plain
+      # "8080:8080" form) publishes an unauthenticated control panel on every
+      # interface, including any you did not think about.
+      - "192.168.1.10:8080:8080"
+
+    volumes:
+      # The Docker socket. This is the whole reason the tool works, and also the
+      # reason it is dangerous: access to this socket is equivalent to root on the
+      # host.
+      #
+      # The :ro is worth having — it stops the file itself from being replaced —
+      # but be clear that it does NOT restrict what dockontroler can ask Docker to
+      # do. A read-only bind mount cannot make a socket read-only. If you want
+      # real restrictions, put a socket proxy in front; see the README.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+    # Nothing is ever written to disk: configuration comes from the environment
+    # and templates are compiled into the binary.
+    read_only: true
+
+    security_opt:
+      - no-new-privileges:true
+
+    environment:
+      # All of these are optional; the defaults are shown.
+      # LISTEN_ADDR: ":8080"
+      # DOCKER_SOCKET: "/var/run/docker.sock"
+      # REFRESH_INTERVAL: "5s"
+      # STOP_TIMEOUT: "10s"
+      # LOG_LEVEL: "info"
+
+      # Telegram bot. Leave the token unset to run without it.
+      #
+      # TELEGRAM_ALLOWED_CHAT_IDS is mandatory as soon as a token is set, and
+      # startup fails without it: a bot with no allow-list hands every container on
+      # this host to whoever finds it. Message the bot once and it replies with
+      # the chat id to put here.
+      # TELEGRAM_BOT_TOKEN: "123456789:AAExampleTokenFromBotFather"
+      # TELEGRAM_ALLOWED_CHAT_IDS: "123456789"
+
+      # Only needed if the log says dockontroler could not identify its own
+      # container. Without it, nothing stops you from stopping the UI itself.
+      # DOCKONTROLER_SELF_ID: "dockontroler"
+
+# ---------------------------------------------------------------------------
+# Hardening option: put a socket proxy in front of the daemon.
+#
+# The proxy exposes only the endpoints dockontroler needs, so a flaw in this tool
+# — or anyone who reaches its unauthenticated page — cannot use the socket to do
+# arbitrary things to the host.
+#
+# It needs a TCP endpoint though, and dockontroler currently speaks only to a unix
+# socket. Until that changes this is documentation of intent rather than a working
+# recipe; see the "Not in v1" section of the README.
+#
+#   docker-socket-proxy:
+#     image: tecnativa/docker-socket-proxy
+#     restart: unless-stopped
+#     volumes:
+#       - /var/run/docker.sock:/var/run/docker.sock:ro
+#     environment:
+#       CONTAINERS: 1      # list and inspect
+#       POST: 1            # start, stop, restart, update, create
+#       NETWORKS: 1        # attach a replacement to its networks

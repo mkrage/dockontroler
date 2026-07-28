@@ -1,0 +1,515 @@
+/* Dockontroler stylesheet.
+ *
+ * Hand-written on purpose: a CSS framework would be larger than the whole
+ * interface. Colours come from custom properties so light and dark mode differ
+ * only in the values at the top.
+ */
+
+:root {
+	--bg: #f6f7f9;
+	--surface: #ffffff;
+	--surface-alt: #f0f2f5;
+	--border: #dcdfe4;
+	--border-strong: #c3c8d0;
+	--text: #1b1f24;
+	--text-dim: #636c76;
+	--accent: #0b7285;
+	--accent-text: #ffffff;
+	--danger: #b42318;
+	--warn-bg: #fdf6e3;
+	--warn-border: #e2c88a;
+	--ok-bg: #e7f5ec;
+	--ok-border: #9cd4b0;
+	--err-bg: #fdecea;
+	--err-border: #f0b0aa;
+	--running: #2f9e44;
+	--stopped: #909aa5;
+	--transitional: #e8a33d;
+	--error: #d64545;
+	--radius: 7px;
+	--shadow: 0 1px 2px rgb(16 24 40 / 6%);
+	/* Wordmark colours: the "doCK…er" letters carry one colour, the "ontrol"
+	   between them another, so the two interlocked words are visible. */
+	--brand-dock: #0e7c8c;
+	--brand-ctrl: #c2410c;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--bg: #16191d;
+		--surface: #1e2227;
+		--surface-alt: #262b31;
+		--border: #333a42;
+		--border-strong: #454d57;
+		--text: #e6e9ed;
+		--text-dim: #98a1ab;
+		--accent: #3aa7bd;
+		--accent-text: #0d1216;
+		--danger: #e5726a;
+		--warn-bg: #3a3016;
+		--warn-border: #6b5824;
+		--ok-bg: #16301f;
+		--ok-border: #2b5c3a;
+		--err-bg: #3a1d1a;
+		--err-border: #6d312b;
+		--running: #51cf66;
+		--stopped: #7b858f;
+		--transitional: #f0b849;
+		--error: #ff6b6b;
+		--shadow: 0 1px 2px rgb(0 0 0 / 30%);
+		--brand-dock: #38bdd0;
+		--brand-ctrl: #fb923c;
+	}
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--text);
+	font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+	-webkit-text-size-adjust: 100%;
+}
+
+code {
+	font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+	font-size: 0.9em;
+	background: var(--surface-alt);
+	padding: 0.1em 0.35em;
+	border-radius: 4px;
+}
+
+/* ---------- top bar ---------- */
+
+.topbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 0.85rem 1.25rem;
+	background: var(--surface);
+	border-bottom: 1px solid var(--border);
+	position: sticky;
+	top: 0;
+	z-index: 10;
+}
+
+.topbar__title {
+	margin: 0;
+	font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+	font-size: 1.1rem;
+	font-weight: 700;
+	letter-spacing: 0;
+}
+
+.wm-dock {
+	color: var(--brand-dock);
+}
+
+.wm-ctrl {
+	color: var(--brand-ctrl);
+}
+
+.topbar__actions {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+}
+
+.topbar__stamp {
+	color: var(--text-dim);
+	font-size: 0.8rem;
+	font-variant-numeric: tabular-nums;
+}
+
+/* Blinks once per refresh so it is obvious the page is live. */
+.topbar__pulse {
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: var(--border-strong);
+	transition: background 180ms ease;
+}
+
+.topbar__pulse.is-active {
+	background: var(--running);
+}
+
+.page {
+	max-width: 1100px;
+	margin: 0 auto;
+	padding: 1.25rem;
+}
+
+.footer {
+	max-width: 1100px;
+	margin: 0 auto;
+	padding: 0 1.25rem 2rem;
+	color: var(--text-dim);
+	font-size: 0.82rem;
+}
+
+/* ---------- banners and toast ---------- */
+
+.banner {
+	margin: 0 0 1rem;
+	padding: 0.65rem 0.85rem;
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	font-size: 0.9rem;
+}
+
+.banner--warn {
+	background: var(--warn-bg);
+	border-color: var(--warn-border);
+}
+
+.banner--ok {
+	background: var(--ok-bg);
+	border-color: var(--ok-border);
+}
+
+.banner--error {
+	background: var(--err-bg);
+	border-color: var(--err-border);
+}
+
+.toast {
+	position: fixed;
+	left: 50%;
+	bottom: 1.5rem;
+	transform: translateX(-50%);
+	max-width: min(90vw, 46rem);
+	padding: 0.7rem 1rem;
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--surface);
+	box-shadow: 0 6px 20px rgb(16 24 40 / 18%);
+	font-size: 0.9rem;
+	z-index: 50;
+}
+
+.toast--ok {
+	background: var(--ok-bg);
+	border-color: var(--ok-border);
+}
+
+.toast--error {
+	background: var(--err-bg);
+	border-color: var(--err-border);
+}
+
+/* ---------- overview header ---------- */
+
+.overview {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-bottom: 1rem;
+	color: var(--text-dim);
+	font-size: 0.88rem;
+}
+
+.overview p {
+	margin: 0;
+}
+
+.overview strong {
+	color: var(--text);
+}
+
+.empty {
+	padding: 2rem;
+	text-align: center;
+	color: var(--text-dim);
+	background: var(--surface);
+	border: 1px dashed var(--border);
+	border-radius: var(--radius);
+}
+
+/* ---------- projects ---------- */
+
+.project {
+	margin-bottom: 1.75rem;
+}
+
+.project__name {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin: 0 0 0.6rem;
+	font-size: 0.78rem;
+	font-weight: 650;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--text-dim);
+}
+
+.project__count {
+	padding: 0.05rem 0.4rem;
+	border-radius: 999px;
+	background: var(--surface-alt);
+	border: 1px solid var(--border);
+	font-size: 0.72rem;
+	letter-spacing: 0;
+}
+
+.rows {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+/* ---------- one container ---------- */
+
+.row {
+	display: grid;
+	grid-template-columns: auto minmax(9rem, 1fr) minmax(8rem, auto) auto auto;
+	grid-template-areas: "dot ident status actions policy";
+	align-items: center;
+	gap: 0.5rem 1rem;
+	padding: 0.7rem 0.9rem;
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+}
+
+.row--self {
+	border-color: var(--accent);
+}
+
+.row.is-busy {
+	opacity: 0.55;
+	pointer-events: none;
+}
+
+.dot {
+	grid-area: dot;
+	width: 9px;
+	height: 9px;
+	border-radius: 50%;
+	background: var(--stopped);
+}
+
+.dot--running {
+	background: var(--running);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--running) 22%, transparent);
+}
+
+.dot--transitional {
+	background: var(--transitional);
+}
+
+.dot--error {
+	background: var(--error);
+}
+
+.row__ident {
+	grid-area: ident;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.row__name {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	font-weight: 600;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.row__sub {
+	display: flex;
+	gap: 0.5rem;
+	min-width: 0;
+	color: var(--text-dim);
+	font-size: 0.8rem;
+}
+
+.row__image,
+.row__cname {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.row__cname::before {
+	content: "·";
+	margin-right: 0.5rem;
+}
+
+.tag {
+	padding: 0.05rem 0.35rem;
+	border-radius: 999px;
+	background: var(--accent);
+	color: var(--accent-text);
+	font-size: 0.68rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.row__status {
+	grid-area: status;
+	display: flex;
+	flex-direction: column;
+	color: var(--text-dim);
+	font-size: 0.85rem;
+}
+
+.hint {
+	color: var(--text-dim);
+	font-size: 0.76rem;
+	font-style: italic;
+}
+
+.row__actions {
+	grid-area: actions;
+	display: flex;
+	gap: 0.35rem;
+}
+
+.row__actions form {
+	margin: 0;
+}
+
+.row__policy {
+	grid-area: policy;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 0.15rem;
+}
+
+/* ---------- buttons ---------- */
+
+.btn {
+	padding: 0.32rem 0.7rem;
+	border: 1px solid var(--border-strong);
+	border-radius: 5px;
+	background: var(--surface);
+	color: var(--text);
+	font: inherit;
+	font-size: 0.85rem;
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.btn:hover:not(:disabled) {
+	background: var(--surface-alt);
+}
+
+.btn:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
+.btn--primary {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: var(--accent-text);
+	font-weight: 600;
+}
+
+.btn--primary:hover:not(:disabled) {
+	filter: brightness(1.08);
+	background: var(--accent);
+}
+
+.btn--danger {
+	color: var(--danger);
+	border-color: color-mix(in srgb, var(--danger) 45%, var(--border-strong));
+}
+
+.btn:focus-visible,
+.seg__btn:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+/* Segmented control for the restart policy. */
+.seg {
+	display: inline-flex;
+	margin: 0;
+	border: 1px solid var(--border-strong);
+	border-radius: 5px;
+	overflow: hidden;
+}
+
+.seg__btn {
+	padding: 0.3rem 0.6rem;
+	border: 0;
+	border-left: 1px solid var(--border);
+	background: var(--surface);
+	color: var(--text-dim);
+	font: inherit;
+	font-size: 0.8rem;
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.seg__btn:first-child {
+	border-left: 0;
+}
+
+.seg__btn:hover {
+	background: var(--surface-alt);
+	color: var(--text);
+}
+
+.seg__btn.is-active {
+	background: var(--accent);
+	color: var(--accent-text);
+	font-weight: 600;
+}
+
+/* ---------- narrow screens ---------- */
+
+@media (max-width: 860px) {
+	.row {
+		grid-template-columns: auto minmax(0, 1fr);
+		grid-template-areas:
+			"dot ident"
+			"status status"
+			"actions actions"
+			"policy policy";
+		align-items: start;
+		row-gap: 0.6rem;
+	}
+
+	.dot {
+		margin-top: 0.45rem;
+	}
+
+	.row__policy {
+		align-items: stretch;
+	}
+
+	.seg {
+		width: 100%;
+	}
+
+	.seg__btn {
+		flex: 1;
+	}
+
+	.row__actions .btn,
+	.row__actions form {
+		flex: 1;
+	}
+
+	.row__actions .btn {
+		width: 100%;
+	}
+}

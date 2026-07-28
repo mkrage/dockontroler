@@ -1,0 +1,54 @@
+{{define "page"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex, nofollow">
+	<title>Dockontroler</title>
+	<link rel="icon" href="/static/favicon.svg?v={{.AssetVersion}}" type="image/svg+xml">
+	<link rel="stylesheet" href="/static/app.css?v={{.AssetVersion}}">
+</head>
+<body data-refresh-millis="{{.RefreshMillis}}">
+	<header class="topbar">
+		<!-- The name is two words sharing letters: doCK + er spell Docker around
+		     Control in the middle. Colouring the groups is the same idea as the
+		     logo in the README, without needing a second copy of the asset. -->
+		<h1 class="topbar__title"><span class="wm-dock">doCK</span><span
+			class="wm-ctrl">ontrol</span><span class="wm-dock">er</span></h1>
+		<div class="topbar__actions">
+			<!-- Filled in by app.js from the refreshed fragment; stays empty
+			     without JavaScript, where the list carries its own timestamp. -->
+			<span class="topbar__stamp" id="stamp"></span>
+			<span class="topbar__pulse" id="pulse" aria-hidden="true"></span>
+			<button type="button" class="btn" id="refresh-now">Refresh</button>
+		</div>
+	</header>
+
+	<main class="page">
+		{{if not .SelfProtected}}
+		<p class="banner banner--warn">
+			Dockontroler could not identify its own container, so it cannot stop you from
+			shutting itself down. Set <code>DOCKONTROLER_SELF_ID</code> to its container id
+			to enable that safeguard.
+		</p>
+		{{end}}
+
+		{{with .Flash}}
+		<p class="banner banner--{{.Level}}">{{.Text}}</p>
+		{{end}}
+
+		<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+		<div id="containers">
+			{{template "containers" .Overview}}
+		</div>
+	</main>
+
+	<footer class="footer">
+		<span>No authentication — keep this bound to your home network.</span>
+	</footer>
+
+	<script src="/static/app.js?v={{.AssetVersion}}" defer></script>
+</body>
+</html>
+{{end}}

@@ -1,0 +1,125 @@
+{
+	"Id": "a1b2c3d4e5f60000000000000000000000000000000000000000000000000000",
+	"Name": "/blog-web-1",
+	"Image": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+	"State": {
+		"Running": true,
+		"Status": "running"
+	},
+	"Mounts": [
+		{
+			"Type": "volume",
+			"Name": "blog_data",
+			"Source": "/var/lib/docker/volumes/blog_data/_data",
+			"Destination": "/data",
+			"Mode": "z",
+			"RW": true
+		},
+		{
+			"Type": "volume",
+			"Name": "a9f3c2e1b7d84f5a6c0e",
+			"Source": "/var/lib/docker/volumes/a9f3c2e1b7d84f5a6c0e/_data",
+			"Destination": "/var/cache/nginx",
+			"Mode": "",
+			"RW": true
+		},
+		{
+			"Type": "bind",
+			"Name": "",
+			"Source": "/etc/localtime",
+			"Destination": "/etc/localtime",
+			"Mode": "ro",
+			"RW": false
+		}
+	],
+	"NetworkSettings": {
+		"Networks": {
+			"blog_default": {
+				"IPAMConfig": null,
+				"Links": null,
+				"Aliases": ["web", "a1b2c3d4e5f6"],
+				"NetworkID": "2222222222222222222222222222222222222222222222222222222222222222",
+				"EndpointID": "3333333333333333333333333333333333333333333333333333333333333333",
+				"Gateway": "172.19.0.1",
+				"IPAddress": "172.19.0.4",
+				"MacAddress": "02:42:ac:13:00:04"
+			},
+			"proxy": {
+				"IPAMConfig": {
+					"IPv4Address": "172.20.0.5"
+				},
+				"Links": null,
+				"Aliases": ["blog-web"],
+				"NetworkID": "4444444444444444444444444444444444444444444444444444444444444444",
+				"EndpointID": "5555555555555555555555555555555555555555555555555555555555555555",
+				"Gateway": "172.20.0.1",
+				"IPAddress": "172.20.0.5",
+				"MacAddress": "02:42:ac:14:00:05"
+			}
+		}
+	},
+	"Config": {
+		"Hostname": "a1b2c3d4e5f6",
+		"Domainname": "",
+		"User": "",
+		"AttachStdin": false,
+		"AttachStdout": true,
+		"AttachStderr": true,
+		"ExposedPorts": {
+			"80/tcp": {}
+		},
+		"Tty": false,
+		"OpenStdin": false,
+		"StdinOnce": false,
+		"Env": [
+			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+			"NGINX_VERSION=1.27.0"
+		],
+		"Cmd": ["nginx", "-g", "daemon off;"],
+		"Image": "ghcr.io/me/blog:latest",
+		"Volumes": {
+			"/var/cache/nginx": {}
+		},
+		"WorkingDir": "",
+		"Entrypoint": ["/docker-entrypoint.sh"],
+		"OnBuild": null,
+		"Labels": {
+			"com.docker.compose.config-hash": "9f8e7d6c5b4a",
+			"com.docker.compose.container-number": "1",
+			"com.docker.compose.project": "blog",
+			"com.docker.compose.service": "web",
+			"maintainer": "me"
+		},
+		"StopSignal": "SIGQUIT"
+	},
+	"HostConfig": {
+		"Binds": ["blog_data:/data", "/etc/localtime:/etc/localtime:ro"],
+		"NetworkMode": "blog_default",
+		"PortBindings": {
+			"80/tcp": [
+				{
+					"HostIp": "127.0.0.1",
+					"HostPort": "8080"
+				}
+			]
+		},
+		"RestartPolicy": {
+			"Name": "unless-stopped",
+			"MaximumRetryCount": 0
+		},
+		"AutoRemove": false,
+		"CapAdd": ["NET_ADMIN"],
+		"Sysctls": {
+			"net.ipv4.ip_unprivileged_port_start": "0"
+		},
+		"LogConfig": {
+			"Type": "json-file",
+			"Config": {
+				"max-size": "10m"
+			}
+		},
+		"Privileged": false,
+		"SecurityOpt": null,
+		"ShmSize": 67108864
+	}
+}

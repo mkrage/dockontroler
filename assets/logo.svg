@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 152" width="470" height="152"
+     role="img" aria-label="doCKontroler">
+	<title>doCKontroler</title>
+	<desc>Wordmark: "doCK" and "er" form Docker and are tied together by a bracket
+	that hops over the middle; "Control" sits between them under its own bracket,
+	sharing the C and K.</desc>
+
+	<style>
+		/* One file for both themes. The base palette is legible on white; the
+		   dark override lifts it for dark backgrounds, which is what GitHub uses
+		   when the reader's system is in dark mode. */
+		.dock { fill: #0E7C8C; }
+		.ctrl { fill: #C2410C; }
+		.tie-dock { stroke: #0E7C8C; }
+		.tie-ctrl { stroke: #C2410C; }
+		.label-dock { fill: #0E7C8C; }
+		.label-ctrl { fill: #C2410C; }
+
+		@media (prefers-color-scheme: dark) {
+			.dock, .label-dock { fill: #38BDD0; }
+			.ctrl, .label-ctrl { fill: #FB923C; }
+			.tie-dock { stroke: #38BDD0; }
+			.tie-ctrl { stroke: #FB923C; }
+		}
+
+		.word {
+			font-family: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono",
+			             Menlo, Consolas, "Liberation Mono", monospace;
+			font-size: 56px;
+			font-weight: 700;
+			letter-spacing: 0;
+		}
+		.label {
+			font-family: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+			font-size: 13px;
+			font-weight: 600;
+			letter-spacing: 0.24em;
+			text-transform: uppercase;
+		}
+		.tie { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+	</style>
+
+	<!-- The outer word. The bracket rises over "doCK", hops across the middle and
+	     comes back down over "er", so the eye reads them as one word. -->
+	<path class="tie tie-dock" d="M 31 54 L 31 42 L 165 42 Q 268 18 371 42 L 437 42 L 437 54"/>
+	<text class="label label-dock" x="234" y="20" text-anchor="middle">docker</text>
+
+	<!-- Letter groups are placed on a fixed 34px grid — monospace advance at this
+	     size — and pinned with textLength, so the brackets stay aligned whichever
+	     monospace font the reader's system supplies. -->
+	<text class="word" y="100">
+		<tspan class="dock" x="30" textLength="68" lengthAdjust="spacing">do</tspan><tspan
+		       class="dock" x="98" textLength="68" lengthAdjust="spacing">CK</tspan><tspan
+		       class="ctrl" x="166" textLength="204" lengthAdjust="spacing">ontrol</tspan><tspan
+		       class="dock" x="370" textLength="68" lengthAdjust="spacing">er</tspan>
+	</text>
+
+	<!-- The inner word, borrowing the C from "CK". -->
+	<path class="tie tie-ctrl" d="M 99 110 L 99 120 L 369 120 L 369 110"/>
+	<text class="label label-ctrl" x="234" y="142" text-anchor="middle">control</text>
+</svg>

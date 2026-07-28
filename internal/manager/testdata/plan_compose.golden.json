@@ -1,0 +1,81 @@
+{
+	"AttachStderr": true,
+	"AttachStdin": false,
+	"AttachStdout": true,
+	"Cmd": [
+		"nginx",
+		"-g",
+		"daemon off;"
+	],
+	"Domainname": "",
+	"Entrypoint": [
+		"/docker-entrypoint.sh"
+	],
+	"Env": [
+		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+		"NGINX_VERSION=1.27.0"
+	],
+	"ExposedPorts": {
+		"80/tcp": {}
+	},
+	"HostConfig": {
+		"AutoRemove": false,
+		"Binds": [
+			"/etc/localtime:/etc/localtime:ro",
+			"a9f3c2e1b7d84f5a6c0e:/var/cache/nginx",
+			"blog_data:/data"
+		],
+		"CapAdd": [
+			"NET_ADMIN"
+		],
+		"LogConfig": {
+			"Config": {
+				"max-size": "10m"
+			},
+			"Type": "json-file"
+		},
+		"NetworkMode": "blog_default",
+		"PortBindings": {
+			"80/tcp": [
+				{
+					"HostIp": "127.0.0.1",
+					"HostPort": "8080"
+				}
+			]
+		},
+		"Privileged": false,
+		"RestartPolicy": {
+			"MaximumRetryCount": 0,
+			"Name": "unless-stopped"
+		},
+		"SecurityOpt": null,
+		"ShmSize": 67108864,
+		"Sysctls": {
+			"net.ipv4.ip_unprivileged_port_start": "0"
+		}
+	},
+	"Image": "ghcr.io/me/blog:latest",
+	"Labels": {
+		"com.docker.compose.config-hash": "9f8e7d6c5b4a",
+		"com.docker.compose.container-number": "1",
+		"com.docker.compose.project": "blog",
+		"com.docker.compose.service": "web",
+		"maintainer": "me"
+	},
+	"NetworkingConfig": {
+		"EndpointsConfig": {
+			"blog_default": {
+				"Aliases": [
+					"web"
+				]
+			}
+		}
+	},
+	"OnBuild": null,
+	"OpenStdin": false,
+	"StdinOnce": false,
+	"StopSignal": "SIGQUIT",
+	"Tty": false,
+	"User": "",
+	"WorkingDir": ""
+}

@@ -1,0 +1,17 @@
+# Compiled binaries
+/dockontroler
+/dockontroler.exe
+/dist/
+
+# Go test and coverage artefacts
+*.test
+*.out
+
+# Local, non-shared compose overrides and env files
+docker-compose.override.yml
+.env
+
+# Editors
+.vscode/
+.idea/
+*~

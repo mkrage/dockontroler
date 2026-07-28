@@ -1,0 +1,96 @@
+{{define "containers"}}
+<div class="overview">
+	<p class="overview__summary">
+		<strong>{{.Running}}</strong> of <strong>{{.Total}}</strong> containers running
+	</p>
+	<p class="overview__stamp">updated {{.GeneratedAt.Format "15:04:05"}}</p>
+</div>
+
+{{with .Warning}}
+<p class="banner banner--warn">{{.}}</p>
+{{end}}
+
+{{if not .Groups}}
+<p class="empty">No containers on this host yet.</p>
+{{end}}
+
+{{range .Groups}}
+<section class="project">
+	<h2 class="project__name">
+		{{if .Project}}{{.Project}}{{else}}Standalone containers{{end}}
+		<span class="project__count">{{len .Containers}}</span>
+	</h2>
+
+	<ul class="rows">
+		{{range .Containers}}
+		<li class="row{{if .IsSelf}} row--self{{end}}" data-id="{{.ID}}" data-name="{{.Name}}">
+			<span class="dot dot--{{.StateClass}}" title="{{.State}}"></span>
+
+			<div class="row__ident">
+				<span class="row__name">
+					{{if .ComposeService}}{{.ComposeService}}{{else}}{{.Name}}{{end}}
+					{{if .IsSelf}}<span class="tag">this is me</span>{{end}}
+				</span>
+				<span class="row__sub">
+					<span class="row__image" title="{{.Image}}">{{.Image}}</span>
+					{{if .ComposeService}}<span class="row__cname">{{.Name}}</span>{{end}}
+				</span>
+			</div>
+
+			<div class="row__status">
+				<span>{{.Status}}</span>
+				{{if .Note}}<span class="hint">{{.Note}}</span>{{end}}
+			</div>
+
+			<div class="row__actions">
+				{{if .Running}}
+					{{if .IsSelf}}
+					<button type="button" class="btn" disabled title="Dockontroler will not stop itself">Stop</button>
+					<button type="button" class="btn" disabled title="Dockontroler will not restart itself">Restart</button>
+					{{else}}
+					<form method="post" action="/containers/{{.ID}}/stop">
+						<button type="submit" class="btn btn--danger">Stop</button>
+					</form>
+					<form method="post" action="/containers/{{.ID}}/restart">
+						<button type="submit" class="btn">Restart</button>
+					</form>
+					{{end}}
+				{{else}}
+					<form method="post" action="/containers/{{.ID}}/start">
+						<button type="submit" class="btn btn--primary">Start</button>
+					</form>
+					<button type="button" class="btn" disabled title="Container is not running">Restart</button>
+				{{end}}
+
+				{{if .CanRecreate}}
+				<form method="post" action="/containers/{{.ID}}/recreate"
+				      data-confirm="Recreate &quot;{{.Name}}&quot;?&#10;&#10;It is replaced by a new container built from {{.Image}} as it stands right now. Configuration, volumes and networks are carried over; if anything fails the original is restored.">
+					<button type="submit" class="btn">Recreate</button>
+				</form>
+				{{else}}
+				<button type="button" class="btn" disabled title="Cannot recreate: {{if .Note}}{{.Note}}{{else}}not supported for this container{{end}}">Recreate</button>
+				{{end}}
+			</div>
+
+			<div class="row__policy">
+				<form method="post" action="/containers/{{.ID}}/policy" class="seg">
+					<button type="submit" name="policy" value="no"
+					        class="seg__btn{{if .PolicyIs "no"}} is-active{{end}}"
+					        title="Never start on its own">Never</button>
+					<button type="submit" name="policy" value="unless-stopped"
+					        class="seg__btn{{if .PolicyIs "unless-stopped"}} is-active{{end}}"
+					        title="Start on boot, unless you stopped it yourself">Unless stopped</button>
+					<button type="submit" name="policy" value="always"
+					        class="seg__btn{{if .PolicyIs "always"}} is-active{{end}}"
+					        title="Always start, even if you stopped it yourself">Always</button>
+				</form>
+				{{if not (or (.PolicyIs "no") (.PolicyIs "unless-stopped") (.PolicyIs "always"))}}
+				<span class="hint">currently: {{.Policy}}</span>
+				{{end}}
+			</div>
+		</li>
+		{{end}}
+	</ul>
+</section>
+{{end}}
+{{end}}

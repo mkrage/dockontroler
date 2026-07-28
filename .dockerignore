@@ -1,0 +1,18 @@
+# Keep the build context to source only — everything else just slows the build
+# down or busts the cache.
+.git
+.gitignore
+.github
+README.md
+LICENSE
+assets
+docker-compose.example.yml
+docker-compose.override.yml
+.env
+dist
+dockontroler
+dockontroler.exe
+*.test
+*.out
+.vscode
+.idea
