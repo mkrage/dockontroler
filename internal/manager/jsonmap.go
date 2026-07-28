@@ -14,15 +14,6 @@ func mapString(m map[string]any, key string) string {
 	return s
 }
 
-// mapBool returns m[key] if it is a bool, otherwise false.
-func mapBool(m map[string]any, key string) bool {
-	if m == nil {
-		return false
-	}
-	b, _ := m[key].(bool)
-	return b
-}
-
 // mapSub returns m[key] if it is a nested object, otherwise nil.
 func mapSub(m map[string]any, key string) map[string]any {
 	if m == nil {
@@ -68,9 +59,10 @@ func mapLabels(m map[string]any) map[string]string {
 
 // cloneMap makes a shallow copy of m.
 //
-// Shallow is deliberate: recreate rewrites only top-level keys, and the nested
-// values are handed straight back to Docker as they came out of inspect. Nothing
-// mutates them in place, so there is nothing to deep-copy.
+// Shallow is deliberate: recreate rewrites top-level keys and hands the nested
+// values straight back to Docker as they came out of inspect, so deep-copying
+// would only cost time. The one nested map that does get modified — Config.Volumes
+// — is cloned explicitly at the point of use.
 func cloneMap(m map[string]any) map[string]any {
 	out := make(map[string]any, len(m)+2)
 	for key, value := range m {

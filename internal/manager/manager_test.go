@@ -79,7 +79,7 @@ func TestSelfProtection(t *testing.T) {
 		})
 	}
 
-	if engine.byName("dockontroler").Running != true {
+	if !engine.byName("dockontroler").Running {
 		t.Error("dockontroler stopped itself despite the guard")
 	}
 
@@ -173,7 +173,7 @@ func TestListGroupsByComposeProject(t *testing.T) {
 // already wrong.
 func TestListSurvivesAFailedInspect(t *testing.T) {
 	engine := newFakeEngine()
-	good := runningContainer(engine, "111111111111", "pihole")
+	runningContainer(engine, "111111111111", "pihole")
 	broken := runningContainer(engine, "222222222222", "grafana")
 	engine.failOn = func(method, path string) (int, string, bool) {
 		if method == http.MethodGet && path == "/containers/"+broken.ID+"/json" {
@@ -210,8 +210,8 @@ func TestListSurvivesAFailedInspect(t *testing.T) {
 	if byName["pihole"].Incomplete {
 		t.Error("pihole was inspected fine and must not be marked incomplete")
 	}
-	if !contains([]string{good.Name}, "/pihole") && byName["pihole"].Name != "pihole" {
-		t.Errorf("pihole name = %q", byName["pihole"].Name)
+	if !byName["pihole"].CanRecreate {
+		t.Error("pihole was inspected fine and should still offer recreate")
 	}
 }
 

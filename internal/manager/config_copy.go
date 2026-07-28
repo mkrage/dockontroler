@@ -131,7 +131,15 @@ func carryAnonymousVolumes(inspected *docker.ContainerInspect, body, hostConfig 
 	covered := coveredDestinations(hostConfig)
 
 	binds := mapStrings(hostConfig, "Binds")
+
+	// Config.Volumes has to be copied before anything is deleted from it. body is
+	// only a shallow clone of the inspect result, so the map behind this key is
+	// still the caller's — and planRecreate must not mutate what it was handed.
 	declared := mapSub(body, "Volumes")
+	if declared != nil {
+		declared = cloneMap(declared)
+		body["Volumes"] = declared
+	}
 
 	var carried []string
 	for _, mount := range inspected.Mounts {

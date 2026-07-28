@@ -1,0 +1,12 @@
+# Check everything out with LF line endings, on every platform.
+#
+# Without this, a Windows clone gets CRLF, and then `gofmt -l .` reports every Go
+# file as unformatted and shell scripts fail inside the build container. Go itself
+# tolerates CRLF; the tooling around it does not.
+* text=auto eol=lf
+
+# Binary assets, if any are ever added.
+*.png binary
+*.jpg binary
+*.ico binary
+*.gz binary
