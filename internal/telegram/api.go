@@ -22,10 +22,12 @@ import (
 // without hammering the API.
 const pollTimeout = 30 * time.Second
 
-// Bot API limits worth respecting rather than discovering at runtime.
+// Bot API limits worth respecting rather than discovering at runtime. Both count
+// UTF-16 code units of the text the user ends up seeing, which is how Telegram
+// measures them — see truncate.
 const (
-	maxMessageRunes  = 4096
-	maxCallbackRunes = 190
+	maxMessageUnits  = 4096
+	maxCallbackUnits = 190
 )
 
 // api is a thin wrapper around the Bot API methods Dockontroler uses.
@@ -145,7 +147,7 @@ func (a *api) getUpdates(ctx context.Context, offset int64) ([]Update, error) {
 func (a *api) sendMessage(ctx context.Context, chatID int64, text string, markup *InlineKeyboardMarkup) error {
 	payload := map[string]any{
 		"chat_id":    chatID,
-		"text":       truncate(text, maxMessageRunes),
+		"text":       truncate(text, maxMessageUnits),
 		"parse_mode": "HTML",
 		// Image references are not links, and a preview would push the buttons
 		// off screen.
@@ -163,7 +165,7 @@ func (a *api) editMessage(ctx context.Context, chatID, messageID int64, text str
 	payload := map[string]any{
 		"chat_id":              chatID,
 		"message_id":           messageID,
-		"text":                 truncate(text, maxMessageRunes),
+		"text":                 truncate(text, maxMessageUnits),
 		"parse_mode":           "HTML",
 		"link_preview_options": map[string]any{"is_disabled": true},
 	}
@@ -192,18 +194,129 @@ func (a *api) answerCallback(ctx context.Context, callbackID, text string, alert
 		"show_alert":        alert,
 	}
 	if text != "" {
-		payload["text"] = truncate(text, maxCallbackRunes)
+		payload["text"] = truncate(text, maxCallbackUnits)
 	}
 	return a.call(ctx, "answerCallbackQuery", payload, nil)
 }
 
-// truncate shortens text to at most limit runes, counting runes rather than
-// bytes because Telegram's limits are expressed in UTF-16 code units and
-// container names may well contain non-ASCII characters.
+// truncate shortens text so the Bot API accepts it.
+//
+// Two things keep this from being a slice. Telegram counts UTF-16 code units of
+// the parsed message, so markup is free while every emoji — one per container
+// line in the overview — counts twice. And the text is sent with
+// parse_mode=HTML: a cut landing inside a tag or an entity, or one that leaves a
+// <b> unclosed, makes Telegram reject the whole message with "can't parse
+// entities". That would break the truncation path in exactly the case it exists
+// for, and the caller can only log it, leaving the user with no reply at all.
+//
+// So this walks the markup instead: tags are stepped over whole, entities count
+// as the single character they render as, and anything still open at the cut is
+// closed again.
 func truncate(text string, limit int) string {
-	if utf8.RuneCountInString(text) <= limit {
+	if visibleUnits(text) <= limit {
 		return text
 	}
-	runes := []rune(text)
-	return string(runes[:limit-1]) + "…"
+
+	var (
+		out  strings.Builder
+		open []string // element names awaiting their closing tag
+		used int
+	)
+	for i := 0; i < len(text); {
+		if tag, width := leadingTag(text[i:]); width > 0 {
+			out.WriteString(tag)
+			if name, closing := tagName(tag); name != "" {
+				if closing {
+					if last := len(open) - 1; last >= 0 && open[last] == name {
+						open = open[:last]
+					}
+				} else {
+					open = append(open, name)
+				}
+			}
+			i += width
+			continue
+		}
+
+		width, units := leadingChar(text[i:])
+		// One unit stays free for the ellipsis that marks the cut.
+		if used+units > limit-1 {
+			break
+		}
+		out.WriteString(text[i : i+width])
+		used += units
+		i += width
+	}
+
+	out.WriteString("…")
+	for i := len(open) - 1; i >= 0; i-- {
+		out.WriteString("</" + open[i] + ">")
+	}
+	return out.String()
+}
+
+// visibleUnits counts the UTF-16 code units Telegram will charge for: markup does
+// not count, and an entity collapses into the one character it renders as.
+func visibleUnits(text string) int {
+	units := 0
+	for i := 0; i < len(text); {
+		if _, width := leadingTag(text[i:]); width > 0 {
+			i += width
+			continue
+		}
+		width, n := leadingChar(text[i:])
+		units += n
+		i += width
+	}
+	return units
+}
+
+// maxEntityLen bounds how far a "&" may be from its ";" before it is treated as a
+// literal ampersand rather than an entity. "&thinsp;" is 8.
+const maxEntityLen = 12
+
+// leadingTag returns the HTML tag at the start of text and its length in bytes,
+// or width 0 when text does not start with one.
+func leadingTag(text string) (tag string, width int) {
+	if text[0] != '<' {
+		return "", 0
+	}
+	end := strings.IndexByte(text, '>')
+	if end < 0 {
+		// An unterminated "<" is literal text as far as Telegram is concerned.
+		return "", 0
+	}
+	return text[:end+1], end + 1
+}
+
+// leadingChar measures the first visible character of text: an entity, or a single
+// rune. Runes outside the BMP take two UTF-16 units, which is how Telegram counts
+// the state emoji in front of every container.
+func leadingChar(text string) (width, units int) {
+	if text[0] == '&' {
+		if end := strings.IndexByte(text, ';'); end > 0 && end <= maxEntityLen {
+			return end + 1, 1
+		}
+	}
+	r, size := utf8.DecodeRuneInString(text)
+	if r > 0xFFFF {
+		return size, 2
+	}
+	return size, 1
+}
+
+// tagName extracts the element name of a tag and whether it closes one. An empty
+// name means the tag needs no tracking.
+func tagName(tag string) (name string, closing bool) {
+	inner := strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(tag, "<"), ">"))
+	if inner == "" || strings.HasSuffix(inner, "/") {
+		return "", false
+	}
+	closing = strings.HasPrefix(inner, "/")
+	inner = strings.TrimPrefix(inner, "/")
+	// Attributes, as in <a href="...">, are not part of the name.
+	if space := strings.IndexAny(inner, " \t\n\r"); space >= 0 {
+		inner = inner[:space]
+	}
+	return strings.ToLower(inner), closing
 }
