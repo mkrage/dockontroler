@@ -14,6 +14,15 @@ func mapString(m map[string]any, key string) string {
 	return s
 }
 
+// mapBool returns m[key] if it is a bool, otherwise false.
+func mapBool(m map[string]any, key string) bool {
+	if m == nil {
+		return false
+	}
+	b, _ := m[key].(bool)
+	return b
+}
+
 // mapSub returns m[key] if it is a nested object, otherwise nil.
 func mapSub(m map[string]any, key string) map[string]any {
 	if m == nil {
@@ -23,23 +32,31 @@ func mapSub(m map[string]any, key string) map[string]any {
 	return sub
 }
 
-// mapStrings returns m[key] as a string slice. JSON arrays decode to []any, so
-// each element is converted individually and non-strings are skipped.
+// mapStrings returns m[key] as a string slice.
+//
+// Both shapes a create body can hold are accepted: JSON arrays decode to []any,
+// so each element is converted individually and non-strings are skipped, while a
+// list the planner has already rewritten — Binds, after anonymous volumes were
+// carried over — is a plain []string. Reading back only the first shape would
+// quietly return nothing for the second.
 func mapStrings(m map[string]any, key string) []string {
 	if m == nil {
 		return nil
 	}
-	raw, ok := m[key].([]any)
-	if !ok {
+	switch raw := m[key].(type) {
+	case []string:
+		return raw
+	case []any:
+		out := make([]string, 0, len(raw))
+		for _, item := range raw {
+			if s, ok := item.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	default:
 		return nil
 	}
-	out := make([]string, 0, len(raw))
-	for _, item := range raw {
-		if s, ok := item.(string); ok {
-			out = append(out, s)
-		}
-	}
-	return out
 }
 
 // mapLabels returns m["Labels"] as a string map.

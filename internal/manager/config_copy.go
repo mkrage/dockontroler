@@ -118,11 +118,12 @@ func planRecreate(inspected *docker.ContainerInspect) (recreatePlan, error) {
 // carryAnonymousVolumes makes the replacement reuse the previous container's
 // anonymous volumes instead of getting fresh empty ones.
 //
-// This is the trap that eats databases. An image with a VOLUME instruction, or a
-// `docker run -v /var/lib/postgresql/data`, produces a volume with a generated
-// name that appears nowhere in HostConfig — only in the resolved Mounts list. A
-// recreate that copies HostConfig alone therefore creates a brand-new empty
-// volume and leaves the old data orphaned under a random name.
+// This is the trap that eats databases. An image with a VOLUME instruction, a
+// `docker run -v /var/lib/postgresql/data`, or a `--mount type=volume` without a
+// source produces a volume with a generated name that appears nowhere in
+// HostConfig as a name — only in the resolved Mounts list. A recreate that copies
+// HostConfig alone therefore creates a brand-new empty volume and leaves the old
+// data orphaned under a random name.
 //
 // The fix is to turn each such volume into an explicit bind, and to drop the
 // matching entry from Config.Volumes so Docker does not generate a new one for
@@ -142,6 +143,7 @@ func carryAnonymousVolumes(inspected *docker.ContainerInspect, body, hostConfig 
 	}
 
 	var carried []string
+	carriedTargets := map[string]bool{}
 	for _, mount := range inspected.Mounts {
 		if mount.Type != "volume" || mount.Name == "" || mount.Destination == "" {
 			continue
@@ -154,6 +156,7 @@ func carryAnonymousVolumes(inspected *docker.ContainerInspect, body, hostConfig 
 
 		binds = append(binds, formatBind(mount))
 		carried = append(carried, mount.Destination)
+		carriedTargets[mount.Destination] = true
 
 		// Without this, Docker sees the destination in Config.Volumes and
 		// creates a second, empty anonymous volume for it.
@@ -168,6 +171,10 @@ func carryAnonymousVolumes(inspected *docker.ContainerInspect, body, hostConfig 
 
 	sort.Strings(binds)
 	hostConfig["Binds"] = binds
+	// The source-less Mounts entry for a carried destination has to go with it:
+	// left in place beside the new bind, it would make the Engine reject the
+	// create with a duplicate mount point.
+	dropAnonymousMounts(hostConfig, carriedTargets)
 	if declared != nil && len(declared) == 0 {
 		delete(body, "Volumes")
 	}
@@ -192,14 +199,57 @@ func coveredDestinations(hostConfig map[string]any) map[string]bool {
 
 	if mounts, ok := hostConfig["Mounts"].([]any); ok {
 		for _, entry := range mounts {
-			if mount, ok := entry.(map[string]any); ok {
-				if target := mapString(mount, "Target"); target != "" {
-					covered[target] = true
-				}
+			mount, ok := entry.(map[string]any)
+			if !ok {
+				continue
+			}
+			// A source-less volume mount is anonymous, so its destination is
+			// exactly not covered: the generated name lives only in the resolved
+			// mount list and carryAnonymousVolumes has to rescue it.
+			if isAnonymousVolumeSpec(mount) {
+				continue
+			}
+			if target := mapString(mount, "Target"); target != "" {
+				covered[target] = true
 			}
 		}
 	}
 	return covered
+}
+
+// isAnonymousVolumeSpec reports whether a HostConfig.Mounts entry asks for an
+// anonymous volume, as `--mount type=volume,target=/data` does.
+func isAnonymousVolumeSpec(mount map[string]any) bool {
+	return mapString(mount, "Type") == "volume" && mapString(mount, "Source") == ""
+}
+
+// dropAnonymousMounts removes the anonymous mount specs whose destinations are
+// now carried over as explicit binds.
+func dropAnonymousMounts(hostConfig map[string]any, carried map[string]bool) {
+	mounts, ok := hostConfig["Mounts"].([]any)
+	if !ok {
+		return
+	}
+
+	// Filtered into a new slice rather than in place: hostConfig is only a shallow
+	// clone, so the backing array still belongs to the inspect result the caller
+	// handed us.
+	kept := make([]any, 0, len(mounts))
+	for _, entry := range mounts {
+		mount, ok := entry.(map[string]any)
+		if ok && isAnonymousVolumeSpec(mount) && carried[mapString(mount, "Target")] {
+			continue
+		}
+		kept = append(kept, entry)
+	}
+
+	switch {
+	case len(kept) == len(mounts):
+	case len(kept) == 0:
+		delete(hostConfig, "Mounts")
+	default:
+		hostConfig["Mounts"] = kept
+	}
 }
 
 // formatBind renders a mount as a bind string, preserving its access mode.

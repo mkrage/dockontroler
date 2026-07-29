@@ -163,6 +163,16 @@ func recreatability(inspected *docker.ContainerInspect) (bool, string) {
 		return false, "shares another container's network namespace"
 	}
 
+	// A --rm container is deleted by the daemon, along with its anonymous volumes,
+	// the moment it stops. Recreate stops the original before renaming it out of
+	// the way, so by the time anything could go wrong there is nothing left to
+	// restore — the one case where this operation would destroy data instead of
+	// changing nothing. Refuse it rather than reordering: auto-removal is
+	// triggered by the stop, whatever the container is called.
+	if mapBool(inspected.HostConfig, "AutoRemove") {
+		return false, "removed automatically when it stops, so it could not be restored"
+	}
+
 	if strings.Contains(reference, "@sha256:") {
 		// Works, but the digest pins the exact image, so a rebuild will not be
 		// picked up. Worth saying out loud rather than looking broken.

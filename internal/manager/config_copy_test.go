@@ -179,6 +179,79 @@ func TestPlanRecreateDoesNotDuplicateNamedVolumes(t *testing.T) {
 	}
 }
 
+// TestPlanRecreateCarriesMountStyleAnonymousVolumes covers the same trap reached
+// through the long mount syntax: `--mount type=volume,target=/data` records a
+// HostConfig.Mounts entry with no source, so the destination looks configured
+// while the generated volume name lives only in the resolved mount list.
+func TestPlanRecreateCarriesMountStyleAnonymousVolumes(t *testing.T) {
+	inspected := simpleInspect()
+	inspected.HostConfig["Mounts"] = []any{
+		map[string]any{"Type": "volume", "Target": "/var/lib/postgresql/data"},
+		map[string]any{"Type": "volume", "Source": "assets", "Target": "/srv/assets"},
+	}
+	inspected.Mounts = []docker.MountPoint{
+		{
+			Type:        "volume",
+			Name:        "f1e2d3c4b5a6",
+			Destination: "/var/lib/postgresql/data",
+			RW:          true,
+		},
+		{Type: "volume", Name: "assets", Destination: "/srv/assets", RW: true},
+	}
+
+	plan := mustPlan(t, inspected)
+
+	hostConfig := plan.Body["HostConfig"].(map[string]any)
+	binds := mapStrings(hostConfig, "Binds")
+	if want := "f1e2d3c4b5a6:/var/lib/postgresql/data"; !contains(binds, want) {
+		t.Errorf("Binds = %q, want it to contain %q — the data would be left orphaned", binds, want)
+	}
+	// The named volume needs no bind: it is copied as part of HostConfig.Mounts.
+	if contains(binds, "assets:/srv/assets") {
+		t.Errorf("Binds = %q, want the named mount left to HostConfig", binds)
+	}
+
+	// The source-less spec has to go, or the Engine refuses the create with a
+	// duplicate mount point for that target.
+	mounts, ok := hostConfig["Mounts"].([]any)
+	if !ok {
+		t.Fatalf("Mounts = %T, want the named mount still there", hostConfig["Mounts"])
+	}
+	if len(mounts) != 1 {
+		t.Fatalf("Mounts = %v, want only the named mount to survive", mounts)
+	}
+	if got := mapString(mounts[0].(map[string]any), "Target"); got != "/srv/assets" {
+		t.Errorf("surviving mount targets %q, want /srv/assets", got)
+	}
+
+	if !hasNote(plan.Notes, "/var/lib/postgresql/data") {
+		t.Errorf("Notes = %q, want the carried volume mentioned", plan.Notes)
+	}
+}
+
+// TestPlanRecreateRefusesAutoRemove: a --rm container is deleted by the daemon the
+// moment it stops, and recreate stops the original before renaming it out of the
+// way — so there would be nothing left to roll back to. Refusing up front is the
+// only way to keep the "worst case is nothing changed" promise.
+func TestPlanRecreateRefusesAutoRemove(t *testing.T) {
+	inspected := simpleInspect()
+	inspected.HostConfig["AutoRemove"] = true
+
+	if _, err := planRecreate(inspected); !errors.Is(err, ErrUnsupported) {
+		t.Fatalf("err = %v, want ErrUnsupported: stopping it would delete it for good", err)
+	}
+
+	// The UI and the bot both hide the button based on this, so the refusal has to
+	// be visible before anybody clicks.
+	canRecreate, note := recreatability(inspected)
+	if canRecreate {
+		t.Error("recreatability said yes, so the button would still be offered")
+	}
+	if note == "" {
+		t.Error("no reason given, leaving the disabled button unexplained")
+	}
+}
+
 func TestPlanRecreateKeepsReadOnlyMountMode(t *testing.T) {
 	inspected := simpleInspect()
 	inspected.Mounts = []docker.MountPoint{{
