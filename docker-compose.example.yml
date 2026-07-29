@@ -22,9 +22,9 @@ services:
 
     ports:
       # CHANGE THIS to your server's LAN address. Binding to 0.0.0.0 (the plain
-      # "8080:8080" form) publishes an unauthenticated control panel on every
+      # "3625:3625" form) publishes an unauthenticated control panel on every
       # interface, including any you did not think about.
-      - "192.168.1.10:8080:8080"
+      - "192.168.1.10:3625:3625"
 
     volumes:
       # The Docker socket. This is the whole reason the tool works, and also the
@@ -50,7 +50,7 @@ services:
 
     environment:
       # All of these are optional; the defaults are shown.
-      # LISTEN_ADDR: ":8080"
+      # LISTEN_ADDR: ":3625"
       # DOCKER_SOCKET: "/var/run/docker.sock"
       # REFRESH_INTERVAL: "5s"
       # STOP_TIMEOUT: "10s"

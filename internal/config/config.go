@@ -18,7 +18,7 @@ import (
 
 // Config is the fully validated runtime configuration.
 type Config struct {
-	// ListenAddr is the address the web UI binds to, e.g. ":8080".
+	// ListenAddr is the address the web UI binds to, e.g. ":3625".
 	ListenAddr string
 	// DockerSocket is the path to the Engine's unix socket.
 	DockerSocket string
@@ -46,7 +46,7 @@ func (c Config) BotEnabled() bool { return c.TelegramToken != "" }
 
 // Default values, exported so the README and tests cannot drift from the code.
 const (
-	DefaultListenAddr      = ":8080"
+	DefaultListenAddr      = ":3625"
 	DefaultDockerSocket    = "/var/run/docker.sock"
 	DefaultRefreshInterval = 5 * time.Second
 	DefaultStopTimeout     = 10 * time.Second
@@ -73,7 +73,7 @@ func Load() (Config, error) {
 
 	if raw := strings.TrimSpace(os.Getenv("LISTEN_ADDR")); raw != "" {
 		if _, _, err := net.SplitHostPort(raw); err != nil {
-			fail("LISTEN_ADDR %q is not a host:port address (use e.g. \":8080\" or \"192.168.1.10:8080\")", raw)
+			fail("LISTEN_ADDR %q is not a host:port address (use e.g. \":3625\" or \"192.168.1.10:3625\")", raw)
 		} else {
 			cfg.ListenAddr = raw
 		}

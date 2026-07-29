@@ -39,5 +39,5 @@ FROM gcr.io/distroless/static-debian12
 # (root:docker, mode 660). See the README for running as a non-root user instead.
 COPY --from=build /out/dockontroler /dockontroler
 
-EXPOSE 8080
+EXPOSE 3625
 ENTRYPOINT ["/dockontroler"]

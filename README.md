@@ -51,7 +51,7 @@ LAN address — **do not** leave it on `0.0.0.0`, see [Security](#security). The
 docker compose up -d
 ```
 
-Open `http://<your-server>:8080`.
+Open `http://<your-server>:3625`.
 
 ### The compose file
 
@@ -66,9 +66,9 @@ services:
     restart: unless-stopped
 
     ports:
-      # CHANGE THIS to your server's LAN address. The plain "8080:8080" form binds
+      # CHANGE THIS to your server's LAN address. The plain "3625:3625" form binds
       # to every interface, including ones you did not think about.
-      - "192.168.1.10:8080:8080"
+      - "192.168.1.10:3625:3625"
 
     volumes:
       # The reason it works, and the reason it is dangerous: this socket is root on
@@ -123,7 +123,7 @@ stop startup with an explanation rather than falling back to a default.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `LISTEN_ADDR` | `:8080` | Address to bind the web UI to. |
+| `LISTEN_ADDR` | `:3625` | Address to bind the web UI to. |
 | `DOCKER_SOCKET` | `/var/run/docker.sock` | Path to the Engine socket. A `unix://` prefix is accepted. |
 | `REFRESH_INTERVAL` | `5s` | How often the overview reloads. Minimum `1s`. |
 | `STOP_TIMEOUT` | `10s` | Grace period before a container being stopped is killed. |
