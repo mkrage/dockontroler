@@ -137,11 +137,11 @@ func TestIndexRendersTheContainerList(t *testing.T) {
 
 	for _, want := range []string{
 		"<!DOCTYPE html>",
-		"blog",                    // the Compose project heading
-		"web",                     // the service name
-		"ghcr.io/me/blog:latest",  // the image the recreate would use
+		"blog",                   // the Compose project heading
+		"web",                    // the service name
+		"ghcr.io/me/blog:latest", // the image the recreate would use
 		"Up 3 hours",
-		`value="unless-stopped"`,  // the policy control
+		`value="unless-stopped"`, // the policy control
 		"Recreate",
 	} {
 		if !strings.Contains(body, want) {
@@ -320,6 +320,103 @@ func TestRoutingBoundaries(t *testing.T) {
 		if recorder.Code != testCase.wantStatus {
 			t.Errorf("%s %s = %d, want %d", testCase.method, testCase.path,
 				recorder.Code, testCase.wantStatus)
+		}
+	}
+}
+
+// TestActionsRefuseCrossOriginRequests covers the only thing standing between an
+// unauthenticated control panel and any web page a user on the network happens to
+// open: without this, a form on another site could post here, and it would not even
+// need a container id, since names resolve too.
+//
+// The flip side matters just as much — this must not turn into a login. A script
+// with no browser headers, and the page's own forms, have to keep working.
+func TestActionsRefuseCrossOriginRequests(t *testing.T) {
+	handler, engine := newTestServer(t)
+
+	cases := []struct {
+		name       string
+		headers    map[string]string
+		wantStatus int
+	}{
+		{
+			name:       "a form on another site",
+			headers:    map[string]string{"Sec-Fetch-Site": "cross-site"},
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name:       "a sibling host on the same site",
+			headers:    map[string]string{"Sec-Fetch-Site": "same-site"},
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name: "an old browser posting from elsewhere",
+			// No fetch metadata, so the Origin is all there is to go on.
+			headers:    map[string]string{"Origin": "http://evil.example"},
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name:       "the page itself",
+			headers:    map[string]string{"Sec-Fetch-Site": "same-origin"},
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "an old browser posting from the page",
+			headers:    map[string]string{"Origin": "http://example.com"},
+			wantStatus: http.StatusOK,
+		},
+		{
+			// curl, a cron job, the /api consumer: no browser, no headers.
+			name:       "a script",
+			headers:    nil,
+			wantStatus: http.StatusOK,
+		},
+	}
+
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			engine.mu.Lock()
+			engine.running = true
+			engine.mu.Unlock()
+
+			request := httptest.NewRequest(http.MethodPost, "/containers/"+testContainerID+"/stop", nil)
+			request.Host = "example.com"
+			request.Header.Set("Accept", "application/json")
+			for name, value := range testCase.headers {
+				request.Header.Set(name, value)
+			}
+			recorder := httptest.NewRecorder()
+			handler.ServeHTTP(recorder, request)
+
+			if recorder.Code != testCase.wantStatus {
+				t.Fatalf("status = %d, want %d. body: %s",
+					recorder.Code, testCase.wantStatus, recorder.Body)
+			}
+
+			engine.mu.Lock()
+			defer engine.mu.Unlock()
+			if stopped := !engine.running; stopped != (testCase.wantStatus == http.StatusOK) {
+				t.Errorf("container stopped = %v, but the request was answered with %d",
+					stopped, recorder.Code)
+			}
+		})
+	}
+}
+
+// TestReadOnlyRoutesStayOpenCrossOrigin: the guard belongs on the actions only. A
+// cross-origin GET cannot change anything, and the browser will not hand the body
+// to the calling page anyway — no CORS headers are sent.
+func TestReadOnlyRoutesStayOpenCrossOrigin(t *testing.T) {
+	handler, _ := newTestServer(t)
+
+	for _, path := range []string{"/", "/partials/containers", "/api/containers", "/healthz"} {
+		request := httptest.NewRequest(http.MethodGet, path, nil)
+		request.Header.Set("Sec-Fetch-Site", "cross-site")
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, request)
+
+		if recorder.Code != http.StatusOK {
+			t.Errorf("GET %s = %d, want 200", path, recorder.Code)
 		}
 	}
 }

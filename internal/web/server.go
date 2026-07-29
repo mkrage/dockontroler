@@ -16,6 +16,8 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/mkrage/dockontroler/internal/manager"
@@ -74,11 +76,16 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/containers", s.handleAPIContainers)
 	mux.HandleFunc("GET /healthz", s.handleHealth)
 
-	mux.HandleFunc("POST /containers/{id}/start", s.handleAction("start"))
-	mux.HandleFunc("POST /containers/{id}/stop", s.handleAction("stop"))
-	mux.HandleFunc("POST /containers/{id}/restart", s.handleAction("restart"))
-	mux.HandleFunc("POST /containers/{id}/recreate", s.handleAction("recreate"))
-	mux.HandleFunc("POST /containers/{id}/policy", s.handlePolicy)
+	// Every state-changing route is wrapped, because none of them may be driven by
+	// another site; see requireSameOrigin.
+	action := func(pattern string, handler http.HandlerFunc) {
+		mux.Handle("POST "+pattern, s.requireSameOrigin(handler))
+	}
+	action("/containers/{id}/start", s.handleAction("start"))
+	action("/containers/{id}/stop", s.handleAction("stop"))
+	action("/containers/{id}/restart", s.handleAction("restart"))
+	action("/containers/{id}/recreate", s.handleAction("recreate"))
+	action("/containers/{id}/policy", s.handlePolicy)
 
 	mux.Handle("GET /static/", s.staticHandler())
 
@@ -93,6 +100,58 @@ func (s *Server) staticHandler() http.Handler {
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		fileServer.ServeHTTP(w, r)
 	})
+}
+
+// requireSameOrigin refuses state-changing requests that a browser marks as
+// coming from somewhere else.
+//
+// Dockontroler has no login by design, so a POST is authorised by nothing but
+// being reachable — which makes the browser of anyone on the network a usable
+// deputy. A form on any other page can post here, cross-origin form posts need no
+// CORS preflight, and the manager resolves container names as well as ids, so an
+// attacker does not even need to know one. Binding to the LAN does not help
+// against that; this does.
+//
+// It is deliberately not a login: the page's own forms and fetches are
+// same-origin, and curl or a script sends neither header, so both keep working
+// unchanged.
+//
+// What it does not stop is DNS rebinding: an attacker who points a hostname of
+// their own at this host's address is same-origin as far as the browser is
+// concerned, and their page can then read and post freely. Catching that means
+// checking the Host header against the name this instance is supposed to answer
+// to, which needs somebody to configure that name — filter it in a reverse proxy
+// if it matters to you.
+func (s *Server) requireSameOrigin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch site := r.Header.Get("Sec-Fetch-Site"); {
+		case site == "same-origin":
+			// The page itself.
+		case site != "":
+			s.forbidCrossOrigin(w, r, "Sec-Fetch-Site: "+site)
+			return
+		case r.Header.Get("Origin") != "":
+			// Not a legacy fallback: this is the branch that does the work in the
+			// deployment this tool is built for. Browsers attach Sec-Fetch-* only
+			// to potentially trustworthy URLs, so a plain http:// LAN address
+			// never receives them, and Origin on the form post is all there is to
+			// go on. Hosts are compared rather than whole origins, so a
+			// TLS-terminating proxy — https outside, http here — does not trip
+			// over its own scheme.
+			if origin, err := url.Parse(r.Header.Get("Origin")); err != nil ||
+				!strings.EqualFold(origin.Host, r.Host) {
+				s.forbidCrossOrigin(w, r, "Origin: "+r.Header.Get("Origin"))
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (s *Server) forbidCrossOrigin(w http.ResponseWriter, r *http.Request, reason string) {
+	s.log.Warn("refused a cross-origin action",
+		"method", r.Method, "path", r.URL.Path, "reason", reason)
+	http.Error(w, "cross-origin requests are refused", http.StatusForbidden)
 }
 
 // recoverPanics turns a panicking handler into a 500 instead of a dropped
