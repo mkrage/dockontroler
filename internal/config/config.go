@@ -1,4 +1,4 @@
-// Package config loads Dockontroler's settings from environment variables.
+// Package config loads docKontroler's settings from environment variables.
 //
 // Invalid values abort startup instead of silently falling back to a default:
 // a typo in the Telegram allow-list or the listen address should be obvious
@@ -34,7 +34,7 @@ type Config struct {
 	// Never empty when TelegramToken is set.
 	TelegramChatIDs []int64
 
-	// SelfContainerID overrides Dockontroler's own container detection. Empty
+	// SelfContainerID overrides docKontroler's own container detection. Empty
 	// means autodetect.
 	SelfContainerID string
 

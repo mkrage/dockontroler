@@ -109,7 +109,7 @@ func (b *Bot) logPollError(err error, retryIn time.Duration) {
 	var apiErr *apiError
 	if errors.As(err, &apiErr) && apiErr.Code == 409 {
 		// Telegram refuses long polling while a webhook is registered for the
-		// token. Dockontroler does not delete it: the webhook may belong to
+		// token. docKontroler does not delete it: the webhook may belong to
 		// another service the user is running on purpose.
 		b.log.Error("telegram rejects polling because a webhook is registered for this token; "+
 			"delete the webhook or use a separate bot for dockontroler",
@@ -207,7 +207,7 @@ func command(text string) string {
 }
 
 func helpText() string {
-	return "<b>Dockontroler</b>\n\n" +
+	return "<b>docKontroler</b>\n\n" +
 		"/list — show all containers and control them\n" +
 		"/help — this message\n\n" +
 		"Everything else works through the buttons: start, stop and restart a " +

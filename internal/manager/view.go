@@ -32,7 +32,7 @@ type Container struct {
 	Running bool
 	Paused  bool
 
-	// IsSelf marks Dockontroler's own container. Stop, restart and recreate are
+	// IsSelf marks docKontroler's own container. Stop, restart and recreate are
 	// refused for it: the process would kill itself mid-request.
 	IsSelf bool
 

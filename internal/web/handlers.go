@@ -16,7 +16,7 @@ type pageData struct {
 	Overview      manager.Overview
 	RefreshMillis int64
 	AssetVersion  string
-	// SelfProtected is false when Dockontroler could not identify its own
+	// SelfProtected is false when docKontroler could not identify its own
 	// container, meaning it cannot stop the UI from shutting itself down. Worth a
 	// visible banner rather than a silent gap.
 	SelfProtected bool
@@ -72,7 +72,7 @@ func (s *Server) handleFragment(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleAPIContainers exposes the overview as JSON. Nothing in the UI needs it —
-// it is there so users can script against Dockontroler.
+// it is there so users can script against docKontroler.
 func (s *Server) handleAPIContainers(w http.ResponseWriter, r *http.Request) {
 	overview, err := s.manager.List(r.Context())
 	if err != nil {

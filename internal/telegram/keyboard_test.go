@@ -130,7 +130,7 @@ func TestRenderContainerStoppedShowsStart(t *testing.T) {
 }
 
 // TestRenderContainerSelfHasNoDestructiveButtons mirrors the web UI: acting on
-// Dockontroler's own container would kill the process mid-request.
+// docKontroler's own container would kill the process mid-request.
 func TestRenderContainerSelfHasNoDestructiveButtons(t *testing.T) {
 	container := sampleContainer()
 	container.IsSelf = true
@@ -148,7 +148,7 @@ func TestRenderContainerSelfHasNoDestructiveButtons(t *testing.T) {
 	if !containsLabel(labels, "✓ Unless stopped") {
 		t.Errorf("own container lost its policy buttons, labels were %q", labels)
 	}
-	if !strings.Contains(text, "Dockontroler itself") {
+	if !strings.Contains(text, "docKontroler itself") {
 		t.Errorf("text does not explain why the buttons are missing:\n%s", text)
 	}
 }

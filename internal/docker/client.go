@@ -2,7 +2,7 @@
 //
 // It speaks plain HTTP over the Engine's unix socket rather than using the
 // official SDK. The SDK pulls in a large part of the Moby source tree, and
-// Dockontroler needs about a dozen endpoints — so the whole client fits in a few
+// docKontroler needs about a dozen endpoints — so the whole client fits in a few
 // hundred lines and the project keeps zero external dependencies.
 package docker
 
@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-// APIVersion is the Engine API version Dockontroler negotiates. 1.43 ships with
+// APIVersion is the Engine API version docKontroler negotiates. 1.43 ships with
 // Docker 24 (mid-2023) and covers everything used here, so it is old enough to
 // work on the kind of engine a home server actually runs.
 const APIVersion = "1.43"

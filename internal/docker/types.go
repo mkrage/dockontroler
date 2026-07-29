@@ -1,6 +1,6 @@
 package docker
 
-// Restart policy names as the Docker Engine spells them. Dockontroler
+// Restart policy names as the Docker Engine spells them. docKontroler
 // deliberately exposes only these three; "on-failure" is a valid Docker
 // policy but adds a retry-count field that the UI has no room for.
 const (

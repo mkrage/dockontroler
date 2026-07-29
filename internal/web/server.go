@@ -1,4 +1,4 @@
-// Package web serves Dockontroler's browser interface.
+// Package web serves docKontroler's browser interface.
 //
 // Pages are rendered server-side with html/template and enhanced by a small
 // amount of hand-written JavaScript. There is no bundler and no node_modules:
@@ -105,7 +105,7 @@ func (s *Server) staticHandler() http.Handler {
 // requireSameOrigin refuses state-changing requests that a browser marks as
 // coming from somewhere else.
 //
-// Dockontroler has no login by design, so a POST is authorised by nothing but
+// docKontroler has no login by design, so a POST is authorised by nothing but
 // being reachable — which makes the browser of anyone on the network a usable
 // deputy. A form on any other page can post here, cross-origin form posts need no
 // CORS preflight, and the manager resolves container names as well as ids, so an

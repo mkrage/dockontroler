@@ -6,7 +6,7 @@ import (
 )
 
 func TestTruncateLeavesShortTextAlone(t *testing.T) {
-	text := "<b>Dockontroler</b>\n🟢 blog · Up 3 hours"
+	text := "<b>docKontroler</b>\n🟢 blog · Up 3 hours"
 
 	if got := truncate(text, maxMessageUnits); got != text {
 		t.Errorf("truncate rewrote text that already fits:\n%s", got)

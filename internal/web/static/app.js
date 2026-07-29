@@ -1,4 +1,4 @@
-/* Dockontroler front-end.
+/* docKontroler front-end.
  *
  * The page works without this file: every button is a real form that posts and
  * redirects. All this adds is doing it without a full page load, plus the
@@ -136,7 +136,7 @@
 				showToast(response.ok ? "ok" : "error", payload.message || fallback);
 			});
 		}).catch(function (error) {
-			showToast("error", "Could not reach Dockontroler: " + error.message);
+			showToast("error", "Could not reach docKontroler: " + error.message);
 		}).then(function () {
 			inFlight--;
 			if (row) {

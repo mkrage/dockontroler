@@ -16,14 +16,14 @@ var (
 	shortIDPattern = regexp.MustCompile(`^[0-9a-f]{12}$`)
 )
 
-// DetectSelfID works out which container Dockontroler is running in, so that
+// DetectSelfID works out which container docKontroler is running in, so that
 // stopping or recreating itself can be refused.
 //
 // configured wins if set. Otherwise several sources are tried, because none of
 // them works everywhere: /proc/self/mountinfo covers cgroup v2, /proc/self/cgroup
 // covers cgroup v1, and the hostname covers the rest.
 //
-// An empty result is not an error — Dockontroler also runs directly on a
+// An empty result is not an error — docKontroler also runs directly on a
 // developer machine. The caller decides how loudly to complain.
 func DetectSelfID(ctx context.Context, client *docker.Client, configured string) string {
 	if configured != "" {

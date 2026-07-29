@@ -1,6 +1,6 @@
 package telegram
 
-// Bot API payloads, reduced to the fields Dockontroler reads or sends.
+// Bot API payloads, reduced to the fields docKontroler reads or sends.
 
 // Update is one entry from getUpdates. Exactly one of the payload fields is set.
 type Update struct {

@@ -30,7 +30,7 @@ const (
 	maxCallbackUnits = 190
 )
 
-// api is a thin wrapper around the Bot API methods Dockontroler uses.
+// api is a thin wrapper around the Bot API methods docKontroler uses.
 type api struct {
 	http  *http.Client
 	token string

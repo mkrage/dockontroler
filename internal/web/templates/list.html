@@ -45,8 +45,8 @@
 			<div class="row__actions">
 				{{if .Running}}
 					{{if .IsSelf}}
-					<button type="button" class="btn" disabled title="Dockontroler will not stop itself">Stop</button>
-					<button type="button" class="btn" disabled title="Dockontroler will not restart itself">Restart</button>
+					<button type="button" class="btn" disabled title="docKontroler will not stop itself">Stop</button>
+					<button type="button" class="btn" disabled title="docKontroler will not restart itself">Restart</button>
 					{{else}}
 					<form method="post" action="/containers/{{.ID}}/stop">
 						<button type="submit" class="btn btn--danger">Stop</button>

@@ -1,4 +1,4 @@
-// Package manager holds Dockontroler's core logic.
+// Package manager holds docKontroler's core logic.
 //
 // It knows nothing about HTTP or Telegram: both the web handlers and the bot are
 // thin adapters over this package, which is what keeps the two interfaces from
@@ -24,7 +24,7 @@ var (
 	ErrNotFound = errors.New("container not found")
 	// ErrBusy means another operation on the same container is still running.
 	ErrBusy = errors.New("another operation on this container is still running")
-	// ErrProtected means the action was refused on Dockontroler's own container.
+	// ErrProtected means the action was refused on docKontroler's own container.
 	ErrProtected = errors.New("dockontroler cannot do this to its own container")
 	// ErrUnsupported means the container cannot be recreated, with the reason in
 	// the wrapped message.
@@ -42,7 +42,7 @@ type Manager struct {
 	docker      *docker.Client
 	log         *slog.Logger
 	stopTimeout time.Duration
-	// selfID is the full id of Dockontroler's own container, or "" if it could
+	// selfID is the full id of docKontroler's own container, or "" if it could
 	// not be determined — in which case self-protection is inactive.
 	selfID string
 	busy   *busySet
@@ -59,7 +59,7 @@ func New(client *docker.Client, log *slog.Logger, stopTimeout time.Duration, sel
 	}
 }
 
-// SelfID returns the id of Dockontroler's own container, or "" if unknown.
+// SelfID returns the id of docKontroler's own container, or "" if unknown.
 func (m *Manager) SelfID() string { return m.selfID }
 
 // List returns every container on the host, grouped by Compose project.
@@ -131,7 +131,7 @@ func (m *Manager) Start(ctx context.Context, ref string) error {
 	return translate(m.docker.StartContainer(ctx, inspected.ID))
 }
 
-// Stop stops a container, refusing to stop Dockontroler itself.
+// Stop stops a container, refusing to stop docKontroler itself.
 func (m *Manager) Stop(ctx context.Context, ref string) error {
 	inspected, release, err := m.begin(ctx, ref)
 	if err != nil {
@@ -167,7 +167,7 @@ func (m *Manager) Restart(ctx context.Context, ref string) error {
 // SetPolicy changes when Docker will start this container again. It works on
 // stopped containers too and never restarts anything by itself.
 //
-// This is allowed on Dockontroler's own container: it changes no running state,
+// This is allowed on docKontroler's own container: it changes no running state,
 // and being able to set your own policy to unless-stopped is useful.
 func (m *Manager) SetPolicy(ctx context.Context, ref, policy string) error {
 	switch policy {
@@ -227,7 +227,7 @@ func (m *Manager) resolve(ctx context.Context, ref string) (*docker.ContainerIns
 	return inspected, nil
 }
 
-// guardSelf refuses actions that would take down Dockontroler mid-request.
+// guardSelf refuses actions that would take down docKontroler mid-request.
 func (m *Manager) guardSelf(inspected *docker.ContainerInspect, action string) error {
 	if m.selfID != "" && inspected.ID == m.selfID {
 		return fmt.Errorf("%w (cannot %s itself)", ErrProtected, action)

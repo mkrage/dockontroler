@@ -10,7 +10,7 @@ FROM --platform=$BUILDPLATFORM golang:1-alpine AS build
 
 WORKDIR /src
 
-# Copied first so this layer is cached independently of the source. Dockontroler
+# Copied first so this layer is cached independently of the source. docKontroler
 # has no external dependencies, so there is nothing to download — the step is here
 # to keep that true: if a dependency ever creeps in, the build will notice.
 COPY go.mod ./

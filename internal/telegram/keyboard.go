@@ -88,7 +88,7 @@ func decodeCallback(data string) (callback, bool) {
 // renderOverview builds the container list message and its keyboard.
 func renderOverview(overview manager.Overview) (string, *InlineKeyboardMarkup) {
 	var text strings.Builder
-	fmt.Fprintf(&text, "<b>Dockontroler</b>\n%d of %d running · %s\n",
+	fmt.Fprintf(&text, "<b>docKontroler</b>\n%d of %d running · %s\n",
 		overview.Running, overview.Total, overview.GeneratedAt.Format("15:04:05"))
 
 	if overview.Warning != "" {
@@ -146,12 +146,12 @@ func renderContainer(container manager.Container) (string, *InlineKeyboardMarkup
 		fmt.Fprintf(&text, "\n<i>%s</i>\n", esc(container.Note))
 	}
 	if container.IsSelf {
-		text.WriteString("\n⚠️ This is Dockontroler itself, so stop, restart and recreate are disabled.\n")
+		text.WriteString("\n⚠️ This is docKontroler itself, so stop, restart and recreate are disabled.\n")
 	}
 
 	var rows [][]InlineKeyboardButton
 
-	// Run controls. Recreating or stopping Dockontroler through Dockontroler would
+	// Run controls. Recreating or stopping docKontroler through docKontroler would
 	// kill the process mid-request, so those buttons are simply absent.
 	if !container.IsSelf {
 		var runRow []InlineKeyboardButton
