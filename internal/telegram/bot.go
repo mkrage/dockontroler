@@ -25,10 +25,13 @@ const (
 
 // Bot controls containers from a Telegram chat.
 type Bot struct {
-	api      *api
-	manager  *manager.Manager
-	log      *slog.Logger
-	allowed  map[int64]bool
+	api     *api
+	manager *manager.Manager
+	log     *slog.Logger
+	allowed map[int64]bool
+	// slots bounds how many updates are handled at once; see
+	// maxConcurrentUpdates.
+	slots    chan struct{}
 	inFlight sync.WaitGroup
 }
 
@@ -45,6 +48,7 @@ func New(token string, allowedChatIDs []int64, containers *manager.Manager, log 
 		manager: containers,
 		log:     log,
 		allowed: allowed,
+		slots:   make(chan struct{}, maxConcurrentUpdates),
 	}
 }
 
@@ -116,10 +120,22 @@ func (b *Bot) logPollError(err error, retryIn time.Duration) {
 }
 
 // dispatch handles one update, concurrently but bounded.
+//
+// The wait for a slot happens here rather than inside the goroutine, so that a
+// saturated bot stops polling instead of piling up handlers: without that, anyone
+// who knows the bot's username could spawn goroutines by spamming it, since the
+// allow-list applies to what is answered, not to what arrives.
 func (b *Bot) dispatch(ctx context.Context, update Update) {
+	select {
+	case b.slots <- struct{}{}:
+	case <-ctx.Done():
+		return
+	}
+
 	b.inFlight.Add(1)
 	go func() {
 		defer b.inFlight.Done()
+		defer func() { <-b.slots }()
 		defer func() {
 			if recovered := recover(); recovered != nil {
 				b.log.Error("telegram handler panicked", "panic", recovered)
