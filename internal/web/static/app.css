@@ -1,4 +1,4 @@
-/* Dockontroler stylesheet.
+/* docKontroler stylesheet.
  *
  * Hand-written on purpose: a CSS framework would be larger than the whole
  * interface. Colours come from custom properties so light and dark mode differ
@@ -28,10 +28,10 @@
 	--error: #d64545;
 	--radius: 7px;
 	--shadow: 0 1px 2px rgb(16 24 40 / 6%);
-	/* Wordmark colours: the "doCK…er" letters carry one colour, the "ontrol"
-	   between them another, so the two interlocked words are visible. */
+	/* Wordmark colours: the word carries one, its single capital the other, so the
+	   K the mark is built from stands out of the name. */
 	--brand-dock: #0e7c8c;
-	--brand-ctrl: #c2410c;
+	--brand-ctrl: #ffab1f;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -58,7 +58,7 @@
 		--error: #ff6b6b;
 		--shadow: 0 1px 2px rgb(0 0 0 / 30%);
 		--brand-dock: #38bdd0;
-		--brand-ctrl: #fb923c;
+		--brand-ctrl: #ffab1f;
 	}
 }
 
@@ -106,11 +106,17 @@ code {
 	letter-spacing: -0.02em;
 }
 
-/* Same idea as the logo: weight and colour separate the two interlocked words,
-   so no alignment-dependent decoration is needed. */
-.wm-dock {
+/* Same construction as the wordmark asset: "doc" and "er" carry the brand colour
+   so they read as Docker around the outside, "ontrol" sits inside them, and the
+   name's single capital is the mark itself on its badge. */
+.wm {
+	display: inline-flex;
+	align-items: baseline;
+}
+
+.wm-outer {
 	color: var(--brand-dock);
-	font-weight: 800;
+	font-weight: 700;
 }
 
 .wm-ctrl {
@@ -118,11 +124,22 @@ code {
 	font-weight: 600;
 }
 
-.topbar__mark {
+/* What lines up with the text is the K inside the badge, not the badge itself.
+   The artwork is cropped so the letter fills 68.5 of its 94.5 units: sizing the
+   box to 0.99em therefore puts the letter at roughly cap height, and the badge
+   overhangs above and below as a frame should.
+   align-self drops the box's bottom edge onto the baseline, and the nudge then
+   lowers it by the padding underneath the letter, so the K's own baseline is the
+   text's. The negative margins pull the badge's built-in padding back out of the
+   letter spacing, or the word would read as three separate pieces. */
+.wm-badge {
 	flex: none;
-	width: 22px;
-	height: 22px;
-	border-radius: 6px;
+	width: 0.99em;
+	height: 0.99em;
+	margin: 0 -0.06em;
+	align-self: baseline;
+	position: relative;
+	top: 0.136em;
 }
 
 .topbar__actions {

@@ -4,19 +4,26 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="robots" content="noindex, nofollow">
-	<title>Dockontroler</title>
+	<title>docKontroler</title>
 	<link rel="icon" href="/static/favicon.svg?v={{.AssetVersion}}" type="image/svg+xml">
 	<link rel="stylesheet" href="/static/app.css?v={{.AssetVersion}}">
 </head>
 <body data-refresh-millis="{{.RefreshMillis}}">
 	<header class="topbar">
-		<!-- The name is two words sharing letters: doCK + er spell Docker around
-		     Control in the middle. Weight and colour carry that, the same way the
-		     logo does, so no second copy of the wordmark asset is needed. -->
+		<!-- The mark is embedded as the name's single capital rather than sitting
+		     beside it: doc and er carry the brand colour so they read as Docker around
+		     the outside, ontrol sits inside them, and the K between the two is the mark
+		     itself. Inline rather than an <img> so it inherits the theme's colours. -->
 		<h1 class="topbar__title">
-			<img class="topbar__mark" src="/static/favicon.svg?v={{.AssetVersion}}" alt="" width="22" height="22">
-			<span><span class="wm-dock">doCK</span><span
-				class="wm-ctrl">ontrol</span><span class="wm-dock">er</span></span>
+			<span class="wm"><span class="wm-outer">doc</span><svg class="wm-badge"
+				viewBox="14.5 12.5 94.5 94.5" aria-hidden="true"><defs><linearGradient id="wmBadge"
+				gradientUnits="userSpaceOnUse" x1="14.5" y1="12.5" x2="109" y2="107"><stop
+				stop-color="#0E7C8C" offset="0"/><stop stop-color="#22A6BB" offset="1"/></linearGradient></defs><rect
+				x="14.5" y="12.5" width="94.5" height="94.5" rx="23.5" fill="url(#wmBadge)"/><path fill="#F6FBFC"
+				fill-rule="evenodd" d="M35.5 26a7.5 7.5 0 0 1 7.5 7.5v53a7.5 7.5 0 0 1-15 0v-53A7.5 7.5 0 0 1 35.5 26zm0 29.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/><path
+				fill="none" stroke="#F6FBFC" stroke-opacity=".34" stroke-width="15" stroke-linecap="round" d="M43 64l21 22.5"/><path
+				fill="none" stroke="#FFAB1F" stroke-width="15" stroke-linecap="round" d="M52 56l36-23"/></svg><span
+				class="wm-ctrl">ontrol</span><span class="wm-outer">er</span></span>
 		</h1>
 		<div class="topbar__actions">
 			<!-- Filled in by app.js from the refreshed fragment; stays empty
@@ -30,7 +37,7 @@
 	<main class="page">
 		{{if not .SelfProtected}}
 		<p class="banner banner--warn">
-			Dockontroler could not identify its own container, so it cannot stop you from
+			docKontroler could not identify its own container, so it cannot stop you from
 			shutting itself down. Set <code>DOCKONTROLER_SELF_ID</code> to its container id
 			to enable that safeguard.
 		</p>

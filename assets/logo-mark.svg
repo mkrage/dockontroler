@@ -1,30 +1,32 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120"
-     role="img" aria-label="doCKontroler">
-	<title>doCKontroler</title>
-	<desc>The mark on its own: a switch that is on, for use as an avatar or app
-	icon.</desc>
+     role="img" aria-label="docKontroler">
+	<title>docKontroler</title>
+	<desc>The mark on its own, for an avatar or an app icon: a K whose two arms are
+	the two positions of a switch. The upper arm is lit, the lower one dimmed, and the
+	hole in the stem is the pivot they turn on.</desc>
 
 	<defs>
 		<linearGradient id="markGradient" gradientUnits="userSpaceOnUse"
 		                x1="0" y1="0" x2="120" y2="120">
-			<stop class="g-from" offset="0"/>
-			<stop class="g-to" offset="1"/>
+			<stop stop-color="#0E7C8C" offset="0"/>
+			<stop stop-color="#22A6BB" offset="1"/>
 		</linearGradient>
 	</defs>
 
-	<style>
-		.g-from { stop-color: #0E7C8C; }
-		.g-to   { stop-color: #22A6BB; }
-
-		@media (prefers-color-scheme: dark) {
-			.g-from { stop-color: #2FB8CE; }
-			.g-to   { stop-color: #67E8F9; }
-		}
-	</style>
-
+	<!-- One fixed artwork on purpose, with no dark-mode variant. A favicon, a raster
+	     export and somebody else's screenshot all get exactly one version, and this
+	     mid-tone tile separates from a white page and a near-black one alike. -->
 	<rect width="120" height="120" rx="30" fill="url(#markGradient)"/>
-	<rect x="26" y="45" width="68" height="32" rx="16" fill="#FFFFFF"/>
-	<!-- Filled with the same gradient in user space, so it reads as a hole in the
-	     white pill rather than as a separate circle. -->
-	<circle cx="78" cy="61" r="10.5" fill="url(#markGradient)"/>
+
+	<!-- Stem, with the pivot left as a hole so it samples the tile behind it. -->
+	<path fill="#F6FBFC" fill-rule="evenodd"
+	      d="M35.5 26a7.5 7.5 0 0 1 7.5 7.5v53a7.5 7.5 0 0 1-15 0v-53A7.5 7.5 0 0 1 35.5 26zm0 29.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/>
+
+	<!-- The position the switch is not in. -->
+	<path fill="none" stroke="#F6FBFC" stroke-opacity="0.34" stroke-width="15"
+	      stroke-linecap="round" d="M43 64l21 22.5"/>
+	<!-- The position it is in. Amber is turquoise's complement, so the live arm gains
+	     contrast rather than fighting the tile. -->
+	<path fill="none" stroke="#FFAB1F" stroke-width="15" stroke-linecap="round"
+	      d="M52 56l36-23"/>
 </svg>

@@ -1,40 +1,40 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 120" width="560" height="120"
-     role="img" aria-label="doCKontroler">
-	<title>doCKontroler</title>
-	<desc>A toggle switch in a rounded badge, followed by the wordmark. "doCK" and
-	"er" are heavy and carry the brand gradient so they read as Docker; "ontrol"
-	sits between them in a lighter weight and a warm accent, so Control reads as
-	nested inside it.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 96" width="480" height="96"
+     role="img" aria-label="docKontroler">
+	<title>docKontroler</title>
+	<desc>The wordmark, with the mark embedded as the name's single capital. "doc" and
+	"er" carry the brand turquoise so they read as Docker around the outside, "ontrol"
+	sits between them in amber, and the K between the two is the mark itself on its own
+	badge: a letter whose arms are the two positions of a switch, lit above and dimmed
+	below.</desc>
 
 	<defs>
-		<!-- userSpaceOnUse so the badge and the cut-out knob sample the same
-		     gradient: the knob then blends with what is behind it and reads as a
-		     hole rather than a separate shape. -->
-		<linearGradient id="markGradient" gradientUnits="userSpaceOnUse"
-		                x1="0" y1="8" x2="104" y2="112">
+		<linearGradient id="wordGradient" gradientUnits="userSpaceOnUse"
+		                x1="30" y1="28" x2="450" y2="84">
 			<stop class="g-from" offset="0"/>
 			<stop class="g-to" offset="1"/>
 		</linearGradient>
 
-		<!-- Spans the whole wordmark, so the two outer letter groups continue one
-		     sweep instead of each restarting the gradient. -->
-		<linearGradient id="wordGradient" gradientUnits="userSpaceOnUse"
-		                x1="128" y1="36" x2="520" y2="92">
-			<stop class="g-from" offset="0"/>
-			<stop class="g-to" offset="1"/>
+		<!-- The badge keeps its own fixed gradient: it is the app icon appearing inside
+		     the word, so it must not change with the viewer's theme.
+		     Coordinates are the badge's own 120-unit space, not the outer one; the
+		     group's transform applies here too, and outer-space numbers would put the
+		     whole gradient past the shape, leaving it flat. -->
+		<linearGradient id="badgeGradient" gradientUnits="userSpaceOnUse"
+		                x1="14.5" y1="12.5" x2="109" y2="107">
+			<stop stop-color="#0E7C8C" offset="0"/>
+			<stop stop-color="#22A6BB" offset="1"/>
 		</linearGradient>
 	</defs>
 
 	<style>
 		.g-from { stop-color: #0E7C8C; }
 		.g-to   { stop-color: #22A6BB; }
-		.inner  { fill: #EA6E1B; }
-		.knob   { fill: #FFFFFF; }
 
+		/* Type on the page, so the turquoise steps up on a dark ground. The amber is
+		   the mark's own and stays put in both themes. */
 		@media (prefers-color-scheme: dark) {
 			.g-from { stop-color: #2FB8CE; }
 			.g-to   { stop-color: #67E8F9; }
-			.inner  { fill: #FB923C; }
 		}
 
 		.word {
@@ -44,21 +44,34 @@
 			font-size: 58px;
 			letter-spacing: -0.02em;
 		}
-		.outer { font-weight: 800; fill: url(#wordGradient); }
-		.inner { font-weight: 600; }
+		.outer { font-weight: 700; fill: url(#wordGradient); }
+		.ctrl  { font-weight: 600; fill: #FFAB1F; }
 	</style>
 
-	<!-- The mark: a switch that is on. It says "control" without a metaphor to
-	     decode, and it survives being shrunk to a favicon. -->
-	<g>
-		<rect x="0" y="8" width="104" height="104" rx="28" fill="url(#markGradient)"/>
-		<rect class="knob" x="24" y="46" width="56" height="28" rx="14"/>
-		<circle cx="66" cy="60" r="9" fill="url(#markGradient)"/>
+	<!-- Both text runs are anchored against the badge rather than laid out from the
+	     left edge: whichever of the fallback fonts a viewer actually has, the letters
+	     still meet the mark instead of drifting away from it. -->
+	<text class="word outer" x="147" y="68" text-anchor="end">doc</text>
+
+	<!-- What aligns with the text is the K, not the badge around it: the letter's cap
+	     height and baseline are the same as the surrounding word's (42 units on a
+	     58px face), and the badge is the frame, overhanging 8 units above the cap line
+	     and 8 below the baseline.
+	     That is also why the badge is cropped tight to the letter rather than being
+	     the whole 120-unit icon tile: the icon's generous padding would push "doc" and
+	     "ontrol" so far apart that the word would fall into three pieces. -->
+	<g transform="translate(141.11 10.37) scale(0.6131)">
+		<rect x="14.5" y="12.5" width="94.5" height="94.5" rx="23.5"
+		      fill="url(#badgeGradient)"/>
+		<path fill="#F6FBFC" fill-rule="evenodd"
+		      d="M35.5 26a7.5 7.5 0 0 1 7.5 7.5v53a7.5 7.5 0 0 1-15 0v-53A7.5 7.5 0 0 1 35.5 26zm0 29.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/>
+		<path fill="none" stroke="#F6FBFC" stroke-opacity="0.34" stroke-width="15"
+		      stroke-linecap="round" d="M43 64l21 22.5"/>
+		<path fill="none" stroke="#FFAB1F" stroke-width="15" stroke-linecap="round"
+		      d="M52 56l36-23"/>
 	</g>
 
-	<text class="word" x="128" y="80">
-		<tspan class="outer">doCK</tspan><tspan
-		       class="inner">ontrol</tspan><tspan
-		       class="outer">er</tspan>
+	<text class="word" x="211" y="68" text-anchor="start">
+		<tspan class="ctrl">ontrol</tspan><tspan class="outer">er</tspan>
 	</text>
 </svg>
