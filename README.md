@@ -1,5 +1,5 @@
 <p align="center">
-	<img src="assets/logo.svg" alt="doCKontroler" width="440">
+	<img src="assets/logo.svg" alt="docKontroler" width="440">
 </p>
 
 <p align="center">
@@ -22,33 +22,15 @@
 
 <!-- TODO: add a screenshot of the container list, in light and dark mode. -->
 
-
 ## Why not just use Portainer
 
 Portainer is excellent and does far more than this. That is exactly the problem
 for the everyday jobs: log in, find the stack, click through to the container,
-find the button. Dockontroler is one page with no login that does five things,
+find the button. docKontroler is one page with no login that does five things,
 uses about 12 MB of RAM, and starts instantly.
 
 If you want image management, stack editing, multi-host or user accounts, use
 Portainer. This is the thing you keep open in a pinned tab.
-
-## About the name
-
-The name is two words sharing letters. `doCK` and `er` spell **Docker** around the
-outside; **Control** sits in the middle, borrowing the same `C` and `K`:
-
-<p align="center">
-	<img src="assets/logo-wordmark.svg" alt="doCKontroler" width="360">
-</p>
-
-The wordmark shows it with weight and colour rather than any kind of underline:
-the heavy gradient letters read forward as one word, the lighter warm ones sit
-behind them. The mark is a switch that is on — the whole tool in one glyph.
-
-Assets live in [`assets/`](assets): `logo.svg` (mark and wordmark),
-`logo-wordmark.svg`, `logo-mark.svg` (square, for avatars). All three are single
-files that adapt to dark mode on their own.
 
 ## Quick start
 
@@ -71,6 +53,52 @@ docker compose up -d
 
 Open `http://<your-server>:8080`.
 
+### The compose file
+
+Two lines need your attention: the address in `ports:` and, if you want the bot, the
+Telegram pair. Everything else works as it stands.
+
+```yaml
+services:
+  dockontroler:
+    image: dockontroler:latest      # built and tagged by ./rebuild.sh
+    container_name: dockontroler
+    restart: unless-stopped
+
+    ports:
+      # CHANGE THIS to your server's LAN address. The plain "8080:8080" form binds
+      # to every interface, including ones you did not think about.
+      - "192.168.1.10:8080:8080"
+
+    volumes:
+      # The reason it works, and the reason it is dangerous: this socket is root on
+      # the host. The :ro stops the file being replaced, it does not restrict the API.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+    # Nothing is ever written to disk.
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+
+    environment:
+      # All optional, defaults are in Configuration below.
+      # REFRESH_INTERVAL: "5s"
+      # STOP_TIMEOUT: "10s"
+      # LOG_LEVEL: "info"
+
+      # Telegram. Without a token the bot does not run at all; with one, the
+      # allow-list is mandatory and startup fails without it.
+      # TELEGRAM_BOT_TOKEN: "123456789:AAExampleTokenFromBotFather"
+      # TELEGRAM_ALLOWED_CHAT_IDS: "123456789"
+
+      # Only needed if the log says the own container could not be identified.
+      # DOCKONTROLER_SELF_ID: "dockontroler"
+```
+
+[`docker-compose.example.yml`](docker-compose.example.yml) is this same file with the
+reasoning spelled out line by line, plus the socket-proxy hardening option. Read that
+one before you change the socket mount or the port binding.
+
 ### Deploying from Portainer
 
 A Portainer stack cannot build an image: the stack editor has no build context, so
@@ -78,7 +106,7 @@ A Portainer stack cannot build an image: the stack editor has no build context, 
 yourself.
 
 1. On the server, clone the repo and run `./rebuild.sh`.
-2. **Stacks → Add stack**, paste `docker-compose.example.yml`, fix the `ports:` line.
+2. **Stacks → Add stack**, paste the compose file above, fix the `ports:` line.
 3. Deploy with **Pull latest image** switched **off** — the tag exists only on this
    host, and a pull would go looking for it on Docker Hub.
 
@@ -102,7 +130,7 @@ stop startup with an explanation rather than falling back to a default.
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error`. |
 | `TELEGRAM_BOT_TOKEN` | – | Unset means the bot does not run at all. |
 | `TELEGRAM_ALLOWED_CHAT_IDS` | – | Comma-separated chat ids. **Required** once a token is set. |
-| `DOCKONTROLER_SELF_ID` | autodetect | Dockontroler's own container id or name. Only needed if autodetection fails. |
+| `DOCKONTROLER_SELF_ID` | autodetect | docKontroler's own container id or name. Only needed if autodetection fails. |
 
 ## HTTP endpoints
 
@@ -110,7 +138,7 @@ Two of them are meant to be used from outside the page:
 
 | Endpoint | Returns |
 | --- | --- |
-| `GET /api/containers` | The whole overview as JSON: groups, state, restart policy, whether a recreate is possible. Nothing in the UI needs it — it is there so you can script against Dockontroler. |
+| `GET /api/containers` | The whole overview as JSON: groups, state, restart policy, whether a recreate is possible. Nothing in the UI needs it — it is there so you can script against docKontroler. |
 | `GET /healthz` | `ok` with status 200 while the process is up. It deliberately does not touch the Docker socket, so it still answers when the daemon is unreachable: it tells you the container is alive, not that Docker is. |
 
 `GET /partials/containers` serves the HTML fragment the auto-refresh swaps in. That
@@ -177,7 +205,7 @@ leaves the container alone.
 - it removes itself when it stops (`--rm`, `AutoRemove`) — the daemon deletes such a
   container, along with its anonymous volumes, the moment the recreate stops it, so
   there would be nothing left to restore if a later step failed;
-- it is Dockontroler itself.
+- it is docKontroler itself.
 
 A digest-pinned image (`postgres@sha256:…`) can be recreated, but the row says so:
 you get a new container running the same image.
@@ -203,7 +231,7 @@ could stop your containers.
 
 Only long polling is used, so nothing needs to be reachable from the internet. If
 the token already has a webhook registered, polling is refused by Telegram —
-Dockontroler logs that and does not delete the webhook, since it may belong to
+docKontroler logs that and does not delete the webhook, since it may belong to
 something else you run.
 
 ## Security
@@ -216,7 +244,7 @@ to use — and it is only reasonable on a trusted network.
 
 **Ordinary cross-site posts are refused, though.** Being reachable is enough to
 authorise an action, which would otherwise make the browser of anyone on your
-network a way in: a form on any page they open could post to Dockontroler, and
+network a way in: a form on any page they open could post to docKontroler, and
 binding to the LAN would not help. So actions are refused when the browser reports
 them as coming from another origin — `Origin` on a plain-HTTP address, plus
 `Sec-Fetch-Site` where the browser sends it. This is not a login and does not behave
@@ -231,7 +259,7 @@ one anyway.
 
 **The Docker socket is root on the host.** Anything that can talk to
 `/var/run/docker.sock` can start a privileged container that mounts `/`. That
-applies to Dockontroler and to anyone who reaches its page. Mounting the socket
+applies to docKontroler and to anyone who reaches its page. Mounting the socket
 `:ro` does not change this: a read-only bind mount stops the socket *file* from
 being replaced, it does not restrict the API.
 
