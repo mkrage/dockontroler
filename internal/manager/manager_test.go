@@ -171,6 +171,50 @@ func TestListGroupsByComposeProject(t *testing.T) {
 // TestListSurvivesAFailedInspect: one unreadable container must not blank the
 // whole page, since the overview is what the user reaches for when something is
 // already wrong.
+// TestPolicyFileFromComposeLabel: a policy set here lives on the container, so it is
+// overwritten the next time the container is rebuilt from its yaml. Compose records
+// the files it used, which is the one thing that lets the UI say where to write the
+// policy down permanently.
+func TestPolicyFileFromComposeLabel(t *testing.T) {
+	build := func(configFiles string) Container {
+		summary := docker.ContainerSummary{
+			ID:    hexID("blog"),
+			Names: []string{"/blog-web-1"},
+			State: docker.StateRunning,
+			Labels: map[string]string{
+				docker.LabelComposeProject:     "blog",
+				docker.LabelComposeConfigFiles: configFiles,
+			},
+		}
+		return newContainer(summary, nil, "")
+	}
+
+	t.Run("single file", func(t *testing.T) {
+		got := build("/data/compose/7/docker-compose.yml")
+		if want := "/data/compose/7/docker-compose.yml"; got.PolicyFile() != want {
+			t.Errorf("PolicyFile() = %q, want %q", got.PolicyFile(), want)
+		}
+	})
+
+	t.Run("overrides win", func(t *testing.T) {
+		// Later files override earlier ones, so the last is where a restart: line
+		// actually takes effect.
+		got := build("/srv/blog/docker-compose.yml,/srv/blog/docker-compose.override.yml")
+		if want := "/srv/blog/docker-compose.override.yml"; got.PolicyFile() != want {
+			t.Errorf("PolicyFile() = %q, want %q", got.PolicyFile(), want)
+		}
+		if len(got.ComposeFiles) != 2 {
+			t.Errorf("ComposeFiles = %q, want both files kept", got.ComposeFiles)
+		}
+	})
+
+	t.Run("not compose managed", func(t *testing.T) {
+		if got := build(""); got.PolicyFile() != "" {
+			t.Errorf("PolicyFile() = %q, want empty so the UI stays quiet", got.PolicyFile())
+		}
+	})
+}
+
 func TestListSurvivesAFailedInspect(t *testing.T) {
 	engine := newFakeEngine()
 	runningContainer(engine, "111111111111", "pihole")

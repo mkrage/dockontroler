@@ -142,6 +142,10 @@ func renderContainer(container manager.Container) (string, *InlineKeyboardMarkup
 	fmt.Fprintf(&text, "image: <code>%s</code>\n", esc(container.Image))
 	fmt.Fprintf(&text, "status: %s\n", esc(container.Status))
 	fmt.Fprintf(&text, "restart: <code>%s</code>\n", esc(container.Policy))
+	// Where to write the policy down so a rebuild from compose keeps it.
+	if file := container.PolicyFile(); file != "" {
+		fmt.Fprintf(&text, "compose: <code>%s</code>\n", esc(file))
+	}
 	if container.Note != "" {
 		fmt.Fprintf(&text, "\n<i>%s</i>\n", esc(container.Note))
 	}

@@ -403,6 +403,20 @@ code {
 	font-style: italic;
 }
 
+/* Compose paths are long, and a row is not the place to let one push the layout
+   around. Clipped at the end with the whole path in the title: what gets cut is the
+   file name, which is docker-compose.yml on nearly every stack anyway, while the
+   directory that identifies it stays visible. */
+.hint--path {
+	max-width: 15rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-style: normal;
+	font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+	font-size: 0.72rem;
+}
+
 .row__actions {
 	grid-area: actions;
 	display: flex;

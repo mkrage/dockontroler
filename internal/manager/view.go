@@ -38,6 +38,9 @@ type Container struct {
 
 	ComposeProject string
 	ComposeService string
+	// ComposeFiles are the compose files the container was created from, as Compose
+	// itself recorded them. Empty for anything not created by Compose.
+	ComposeFiles []string
 
 	// CanRecreate is false when recreating cannot work, with Note explaining
 	// why. Note is also set for cases that work but come with a caveat.
@@ -53,6 +56,18 @@ type Container struct {
 // PolicyIs reports whether the container currently uses the given policy.
 // Templates call this to highlight the active button.
 func (c Container) PolicyIs(policy string) bool { return c.Policy == policy }
+
+// PolicyFile is the compose file to edit so that a restart policy set here survives
+// the container being rebuilt from its yaml. Empty when Compose was not involved.
+//
+// The last of the files, because later ones override earlier ones: that is where a
+// restart: line ends up winning.
+func (c Container) PolicyFile() string {
+	if len(c.ComposeFiles) == 0 {
+		return ""
+	}
+	return c.ComposeFiles[len(c.ComposeFiles)-1]
+}
 
 // StateClass is a coarse bucket for CSS and for the bot's status icon.
 func (c Container) StateClass() string {
@@ -136,6 +151,7 @@ func newContainer(summary docker.ContainerSummary, inspected *docker.ContainerIn
 
 	container.ComposeProject = labels[docker.LabelComposeProject]
 	container.ComposeService = labels[docker.LabelComposeService]
+	container.ComposeFiles = splitComposeFiles(labels[docker.LabelComposeConfigFiles])
 
 	if container.IsSelf {
 		container.CanRecreate = false
@@ -195,6 +211,22 @@ func isBareImageID(reference string) bool {
 		}
 	}
 	return true
+}
+
+// splitComposeFiles reads the comma-separated list Compose records. Paths are kept
+// verbatim: they are meaningful to whoever ran Compose, and rewriting them to
+// something that looks host-like would only invent a location.
+func splitComposeFiles(raw string) []string {
+	if raw == "" {
+		return nil
+	}
+	var files []string
+	for _, path := range strings.Split(raw, ",") {
+		if path = strings.TrimSpace(path); path != "" {
+			files = append(files, path)
+		}
+	}
+	return files
 }
 
 func firstName(names []string) string {

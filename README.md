@@ -166,6 +166,41 @@ The three buttons on each row map to Docker's restart policies:
 Changing a policy takes effect immediately, works on stopped containers, and never
 starts or restarts anything by itself.
 
+**Where the setting lives.** Nothing is written to a file, and no compose file is
+touched: the policy is part of the container's own configuration in the Docker
+daemon, changed through the Engine API. It therefore survives a daemon restart, a
+reboot, and a recreate through this tool, which carries the whole host configuration
+over.
+
+What it does not survive is the container being rebuilt **from its compose file**,
+because that constructs a new container and a `restart:` line in the yaml wins again.
+Worth knowing precisely, since the difference decides whether your setting is still
+there tomorrow:
+
+- **Leaves it alone:** a reboot, a daemon restart, `docker start`/`stop`/`restart`, a
+  recreate through this tool, and — perhaps unexpectedly — redeploying an *unchanged*
+  Compose stack. Compose compares the `com.docker.compose.config-hash` label against
+  the yaml, and changing a policy through the Engine API does not touch that label, so
+  it sees no drift and keeps the container.
+- **Overwrites it:** editing the yaml and running `docker compose up -d`, a
+  `--force-recreate`, a `down` followed by an `up`, or a redeploy with "re-pull image"
+  enabled. Also `docker compose down` on its own, since the container is gone
+  afterwards.
+
+So the buttons are the way to change a policy now, and the yaml is the value you get
+after the next rebuild. If you want the two to agree permanently, put your choice in
+the yaml as well — and the row tells you which file that is.
+
+**The row names the file.** Compose records the files it was invoked with on every
+container it creates, so a Compose-managed row shows the one to edit, with the full
+path in its tooltip. Where several files were used, the last is shown, because later
+files override earlier ones and that is where a `restart:` line actually wins.
+
+Read that path as Compose wrote it, not as a location on your host. A stack deployed
+through Portainer reports something like `/data/compose/7/docker-compose.yml`, which
+is inside the Portainer container — the file behind Portainer's own stack editor. Edit
+it there rather than hunting for it on the host.
+
 Docker also has `on-failure`, which is deliberately not offered here: it needs a
 retry count, and it does not fit a one-click control. A container already using it
 keeps it — the row shows the current value and none of the three buttons is

@@ -76,8 +76,9 @@ func (s *stubEngine) summary() docker.ContainerSummary {
 		Status:  status,
 		Created: time.Now().Add(-time.Hour).Unix(),
 		Labels: map[string]string{
-			docker.LabelComposeProject: "blog",
-			docker.LabelComposeService: "web",
+			docker.LabelComposeProject:     "blog",
+			docker.LabelComposeService:     "web",
+			docker.LabelComposeConfigFiles: "/data/compose/7/docker-compose.yml",
 		},
 	}
 }
@@ -94,9 +95,12 @@ func (s *stubEngine) inspect() map[string]any {
 		"State": map[string]any{"Running": s.running},
 		"Config": map[string]any{
 			"Image": "ghcr.io/me/blog:latest",
+			// The inspect labels win over the ones in the list entry, so the compose
+			// file has to be here as well -- which is where Docker keeps it too.
 			"Labels": map[string]any{
-				docker.LabelComposeProject: "blog",
-				docker.LabelComposeService: "web",
+				docker.LabelComposeProject:     "blog",
+				docker.LabelComposeService:     "web",
+				docker.LabelComposeConfigFiles: "/data/compose/7/docker-compose.yml",
 			},
 		},
 		"HostConfig": map[string]any{
@@ -153,6 +157,12 @@ func TestIndexRendersTheContainerList(t *testing.T) {
 	// nothing about the current state.
 	if !strings.Contains(body, "is-active") {
 		t.Error("no policy button is marked active")
+	}
+
+	// A policy set here is overwritten the next time the container is rebuilt from
+	// its yaml, so the row has to say which file to write it into.
+	if !strings.Contains(body, "/data/compose/7/docker-compose.yml") {
+		t.Error("the row does not name the compose file the policy has to be written into")
 	}
 }
 

@@ -87,6 +87,10 @@
 				{{if not (or (.PolicyIs "no") (.PolicyIs "unless-stopped") (.PolicyIs "always"))}}
 				<span class="hint">currently: {{.Policy}}</span>
 				{{end}}
+				{{with .PolicyFile}}
+				<span class="hint hint--path"
+				      title="Set restart: in this file too, or the next rebuild from compose overwrites the policy. Path as compose recorded it: {{.}}">restart: in {{.}}</span>
+				{{end}}
 			</div>
 		</li>
 		{{end}}

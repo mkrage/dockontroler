@@ -21,6 +21,7 @@ func sampleContainer() manager.Container {
 		Running:        true,
 		ComposeProject: "blog",
 		ComposeService: "web",
+		ComposeFiles:   []string{"/data/compose/7/docker-compose.yml"},
 		CanRecreate:    true,
 	}
 }
@@ -99,6 +100,11 @@ func TestRenderContainerKeyboard(t *testing.T) {
 	}
 	if !strings.Contains(text, docker.PolicyUnlessStopped) {
 		t.Errorf("text does not show the current policy:\n%s", text)
+	}
+	// The policy is overwritten when the container is rebuilt from its yaml, so the
+	// view names the file to write it into.
+	if !strings.Contains(text, "/data/compose/7/docker-compose.yml") {
+		t.Errorf("text does not name the compose file:\n%s", text)
 	}
 
 	labels := buttonLabels(markup)

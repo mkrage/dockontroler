@@ -29,6 +29,10 @@ const (
 	// the next `docker compose up -d` will replace the container again.
 	LabelComposeConfigHash = "com.docker.compose.config-hash"
 	LabelComposeNumber     = "com.docker.compose.container-number"
+	// LabelComposeConfigFiles is the comma-separated list of compose files the
+	// container was created from. Compose records the paths as the process that ran
+	// it saw them, which is not necessarily where they are on the host.
+	LabelComposeConfigFiles = "com.docker.compose.project.config_files"
 )
 
 // ContainerSummary is one entry of GET /containers/json. Only the fields the
