@@ -20,7 +20,8 @@
 - **A Telegram bot** with the same abilities, for when you are not at a browser.
 - **Refreshes itself**, so you watch a container come up instead of pressing F5.
 
-> **Screenshot** — _to be added: the container list in light and dark mode._
+<!-- TODO: add a screenshot of the container list, in light and dark mode. -->
+
 
 ## Why not just use Portainer
 
@@ -51,20 +52,38 @@ files that adapt to dark mode on their own.
 
 ## Quick start
 
+On the machine that runs Docker:
+
 ```bash
 git clone https://github.com/mkrage/dockontroler.git
 cd dockontroler
+./rebuild.sh
 cp docker-compose.example.yml docker-compose.yml
 ```
 
-Edit the `ports:` line to your server's LAN address — **do not** leave it on
-`0.0.0.0`, see [Security](#security). Then:
+`rebuild.sh` builds `dockontroler:latest`, stamps the version into the binary, and
+removes any container from a previous build. Edit the `ports:` line to your server's
+LAN address — **do not** leave it on `0.0.0.0`, see [Security](#security). Then:
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
 Open `http://<your-server>:8080`.
+
+### Deploying from Portainer
+
+A Portainer stack cannot build an image: the stack editor has no build context, so
+`build: .` fails there. That is why the compose file points at a tag you build
+yourself.
+
+1. On the server, clone the repo and run `./rebuild.sh`.
+2. **Stacks → Add stack**, paste `docker-compose.example.yml`, fix the `ports:` line.
+3. Deploy with **Pull latest image** switched **off** — the tag exists only on this
+   host, and a pull would go looking for it on Docker Hub.
+
+After a code change, run `./rebuild.sh` again and hit **Update the stack**. The
+script removes the old container, so the redeploy comes up on the new image.
 
 Nothing else is needed: no Go toolchain, no database, no volume. The whole thing
 is one static binary with the templates compiled in.
@@ -84,6 +103,27 @@ stop startup with an explanation rather than falling back to a default.
 | `TELEGRAM_BOT_TOKEN` | – | Unset means the bot does not run at all. |
 | `TELEGRAM_ALLOWED_CHAT_IDS` | – | Comma-separated chat ids. **Required** once a token is set. |
 | `DOCKONTROLER_SELF_ID` | autodetect | Dockontroler's own container id or name. Only needed if autodetection fails. |
+
+## HTTP endpoints
+
+Two of them are meant to be used from outside the page:
+
+| Endpoint | Returns |
+| --- | --- |
+| `GET /api/containers` | The whole overview as JSON: groups, state, restart policy, whether a recreate is possible. Nothing in the UI needs it — it is there so you can script against Dockontroler. |
+| `GET /healthz` | `ok` with status 200 while the process is up. It deliberately does not touch the Docker socket, so it still answers when the daemon is unreachable: it tells you the container is alive, not that Docker is. |
+
+`GET /partials/containers` serves the HTML fragment the auto-refresh swaps in. That
+one is an internal detail of the page, not an interface to build on.
+
+Both are unauthenticated, like everything else here. The state-changing routes are
+POST-only and refuse cross-origin browser requests — see [Security](#security).
+
+**There is no container healthcheck**, and it is not an omission that can be fixed in
+compose: the runtime image is distroless, so it has no shell, no `curl` and no `wget`
+for a `healthcheck:` to run. Point an external monitor at `/healthz` instead. A
+Docker-level healthcheck would need the binary to grow a self-check flag it could
+call itself.
 
 ## Restart policies
 
@@ -134,6 +174,9 @@ leaves the container alone.
   re-resolve;
 - it shares another container's network namespace (`network_mode: "container:…"`)
   — that reference cannot survive a replacement;
+- it removes itself when it stops (`--rm`, `AutoRemove`) — the daemon deletes such a
+  container, along with its anonymous volumes, the moment the recreate stops it, so
+  there would be nothing left to restore if a later step failed;
 - it is Dockontroler itself.
 
 A digest-pinned image (`postgres@sha256:…`) can be recreated, but the row says so:
@@ -171,6 +214,21 @@ Read this part properly. It is the main trade-off of the whole project.
 replace every container on the host. That is the design — it is what makes it fast
 to use — and it is only reasonable on a trusted network.
 
+**Ordinary cross-site posts are refused, though.** Being reachable is enough to
+authorise an action, which would otherwise make the browser of anyone on your
+network a way in: a form on any page they open could post to Dockontroler, and
+binding to the LAN would not help. So actions are refused when the browser reports
+them as coming from another origin — `Origin` on a plain-HTTP address, plus
+`Sec-Fetch-Site` where the browser sends it. This is not a login and does not behave
+like one: the page's own buttons send values that match, and `curl` or a script sends
+no such headers at all, so both keep working unchanged.
+
+It does not defeat **DNS rebinding**, where an attacker points a hostname of their
+own at your server's address so that their page counts as same-origin. Stopping that
+means rejecting requests whose `Host` is not the name this instance answers to,
+which is a filter for your reverse proxy — the points below matter more than this
+one anyway.
+
 **The Docker socket is root on the host.** Anything that can talk to
 `/var/run/docker.sock` can start a privileged container that mounts `/`. That
 applies to Dockontroler and to anyone who reaches its page. Mounting the socket
@@ -205,14 +263,17 @@ throwaway container:
 
 ```bash
 # format, vet and run the full test suite
-docker run --rm -v "$PWD":/src -w /src golang:1-alpine \
+#
+# golang:1 rather than golang:1-alpine: -race needs cgo, and the Alpine image has no
+# C compiler, so it fails there with "-race requires cgo".
+docker run --rm -v "$PWD":/src -w /src golang:1 \
 	sh -c 'gofmt -w . && go vet ./... && go test -race ./...'
 
 # see what the formatter changed
 git diff
 
 # build and run
-docker compose up -d --build && docker compose logs -f
+./rebuild.sh && docker compose up -d && docker compose logs -f
 ```
 
 The tests need no Docker daemon. `internal/manager` runs against a small

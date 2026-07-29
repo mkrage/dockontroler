@@ -1,6 +1,7 @@
-# Example deployment. Copy to docker-compose.yml and adjust the marked lines.
+# Example deployment. Build the image first, then deploy this file:
 #
-#   docker compose up -d --build
+#   ./rebuild.sh                 # builds dockontroler:latest on this host
+#   docker compose up -d         # or paste this file into a Portainer stack
 #
 # Read the security section of the README before exposing this anywhere. There is
 # no login: whoever can open the page can start, stop and replace every container
@@ -8,9 +9,14 @@
 
 services:
   dockontroler:
-    build: .
-    # Once you publish images, swap the build above for something like:
+    # A locally built image rather than "build: ." on purpose: Portainer's stack
+    # editor has no build context, so a build there would fail. ./rebuild.sh builds
+    # and tags it. Keep Portainer's "Pull latest image" off — this tag exists only
+    # on this host, and a pull would look for it on Docker Hub.
+    #
+    # Once you publish images, this becomes something like:
     # image: ghcr.io/mkrage/dockontroler:latest
+    image: dockontroler:latest
     container_name: dockontroler
     restart: unless-stopped
 
@@ -37,6 +43,10 @@ services:
 
     security_opt:
       - no-new-privileges:true
+
+    # No healthcheck on purpose: the image is distroless, so there is no shell,
+    # curl or wget inside for one to run. There is a GET /healthz endpoint — point
+    # an external monitor at it. See the README.
 
     environment:
       # All of these are optional; the defaults are shown.
