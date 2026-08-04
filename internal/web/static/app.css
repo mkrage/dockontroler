@@ -28,6 +28,16 @@
 	--text-dim: #5c6673;
 	--text-faint: #8a939f;
 
+	/* What a button is made of. Its own four values rather than the surfaces above,
+	   because a control has one job the surfaces do not: it has to look raised off
+	   whatever it sits on, at a glance. The card is white and the shade above it was a
+	   hairline away, which is what made a row of buttons read as one grey smear with
+	   words in it instead of three things you can press. */
+	--control: #edf1f7;
+	--control-hover: #e1e8f1;
+	--control-border: #ccd4de;
+	--control-text: #3f4956;
+
 	--accent: #0b7285;
 	--accent-text: #ffffff;
 	/* The accent and the danger colour at low opacity: what a quiet control fills
@@ -88,6 +98,12 @@
 		--text: #e6eaef;
 		--text-dim: #8f99a5;
 		--text-faint: #6c7682;
+
+		/* The same step up from the card, in the direction this theme needs. */
+		--control: #232b35;
+		--control-hover: #2e3844;
+		--control-border: #3a4551;
+		--control-text: #b9c3ce;
 
 		--accent: #35a8bd;
 		--accent-text: #06131a;
@@ -643,12 +659,15 @@ code {
 	gap: 0.7rem;
 }
 
-/* 45rem is where two cards fit without the three actions wrapping. The 20rem
-   minimum is what a card needs for those actions beside the autostart control; the
-   wider it is, the fewer columns a monitor gets for no gain in what a card says. */
+/* 45rem is where two cards fit without the three actions wrapping. The 21rem minimum
+   is what a card needs for those actions beside the autostart control, an em more than
+   it was since the actions became three separate buttons with air between them: at
+   20rem a 2560-pixel monitor got a seventh column, and every card on it paid for that
+   column with a second line in its foot. The wider the minimum, the fewer columns a
+   monitor gets for no gain in what a card says, so this is as wide as it should be. */
 @media (min-width: 45rem) {
 	.rows {
-		grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(21rem, 1fr));
 	}
 }
 
@@ -914,11 +933,16 @@ a.port:hover {
 }
 
 /* Three actions in a fixed order, so the same one is always in the same place — the
-   price of a misclick here is a stopped service. */
+   price of a misclick here is a stopped service.
+   The gap is what makes them three buttons: at a hairline apart they shared an edge
+   and read as one long control with words in it, and the one that matters — Stop — was
+   the hardest of the three to aim at. Wide enough to see between, narrow enough that
+   the three still fit beside the autostart control on the narrowest card — including the
+   card whose policy is "unless stopped", which is the widest that control gets. */
 .row__actions {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 0.1rem;
+	gap: 0.35rem;
 	margin-left: auto;
 }
 
@@ -926,12 +950,11 @@ a.port:hover {
 	margin: 0;
 }
 
-/* One size for all three, filled or not, so the row reads as one control group
-   rather than three that happened to end up next to each other. Tight, because these
-   three plus the autostart control have to share the width of the narrowest card in
-   the grid without the row breaking in two. */
+/* One size for all three, filled or not, so no button is a different shape from the
+   one beside it. The padding is also the hit area: this comes out at about 32 pixels
+   tall, which is a thumb on a phone rather than a line of text with a box round it. */
 .row__actions .btn {
-	padding: 0.28rem 0.45rem;
+	padding: 0.34rem 0.5rem;
 	font-size: 0.8rem;
 }
 
@@ -1033,7 +1056,7 @@ a.port:hover {
 	gap: 0.35rem;
 	padding: 0.32rem 0.7rem;
 	border: 1px solid var(--border);
-	border-radius: var(--radius-xs);
+	border-radius: var(--radius-sm);
 	background: var(--surface);
 	color: var(--text);
 	font: inherit;
@@ -1077,24 +1100,26 @@ a.port:hover {
 	border-color: color-mix(in srgb, var(--accent) 88%, var(--text));
 }
 
-/* What the actions on a card and on a stack chip are. Quieter than a full button —
-   a filled shape on the card's own surface, with an edge barely there — because on a
-   page of thirty cards, four outlined controls each turned the interface into its own
-   subject. But a shape, not bare text: a verb with nothing around it does not say
-   that clicking it does something, and these are the things you came to click.
+/* What the actions on a card and on a stack chip are. Quieter than the one filled
+   button on the page, because on a page of thirty cards four accented controls each
+   would turn the interface into its own subject — but a button, unmistakably: its own
+   fill, its own edge, and a label dark enough to read without leaning in. It used to
+   sit a hairline above the card in both, and that is exactly the difference the eye
+   does not register, so a row of them looked like a strip of text.
    Hover deepens the fill in whichever direction the theme needs, so the response is
    the same in both: darker on white, lighter on the dark surface. */
 .btn--quiet {
 	padding: 0.28rem 0.45rem;
-	border-color: var(--hairline);
-	background: var(--surface-alt);
-	color: var(--text-dim);
+	border-color: var(--control-border);
+	background: var(--control);
+	color: var(--control-text);
 	font-size: 0.8rem;
+	font-weight: 500;
 }
 
 .btn--quiet:hover:not(:disabled) {
-	background: color-mix(in srgb, var(--surface-alt) 88%, var(--text));
-	border-color: var(--border);
+	background: var(--control-hover);
+	border-color: var(--border-strong);
 	color: var(--text);
 }
 
