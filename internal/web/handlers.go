@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -13,7 +14,7 @@ import (
 
 // pageData is the model for the full page template.
 type pageData struct {
-	Overview      manager.Overview
+	Overview      overviewData
 	RefreshMillis int64
 	AssetVersion  string
 	// SelfProtected is false when docKontroler could not identify its own
@@ -28,6 +29,34 @@ type flashMessage struct {
 	Text  string
 }
 
+// overviewData is the container list plus the one thing only the request knows:
+// the address the browser used to get here.
+//
+// That address is what turns a published port into a link you can click. The
+// daemon reports a binding on 0.0.0.0, and nothing on this side knows which of
+// the host's addresses reaches it — the browser, by having asked, just showed one.
+type overviewData struct {
+	manager.Overview
+	Host string
+}
+
+// linkHost is the request's host without its port, ready to drop into a URL.
+// IPv6 literals keep their brackets, or the link would end at the first colon.
+func linkHost(r *http.Request) string {
+	host := r.Host
+	if stripped, _, err := net.SplitHostPort(host); err == nil {
+		host = stripped
+	}
+	host = strings.Trim(host, "[]")
+	if host == "" {
+		return ""
+	}
+	if strings.Contains(host, ":") {
+		return "[" + host + "]"
+	}
+	return host
+}
+
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	overview, err := s.manager.List(r.Context())
 	if err != nil {
@@ -37,7 +66,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := pageData{
-		Overview:      overview,
+		Overview:      overviewData{Overview: overview, Host: linkHost(r)},
 		RefreshMillis: s.refreshInterval.Milliseconds(),
 		AssetVersion:  s.assetVersion,
 		SelfProtected: s.manager.SelfID() != "",
@@ -66,7 +95,8 @@ func (s *Server) handleFragment(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
-	if err := s.templates.ExecuteTemplate(w, "containers", overview); err != nil {
+	data := overviewData{Overview: overview, Host: linkHost(r)}
+	if err := s.templates.ExecuteTemplate(w, "containers", data); err != nil {
 		s.log.Error("could not render the container list", "error", err)
 	}
 }

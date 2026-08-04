@@ -46,6 +46,19 @@ type ContainerSummary struct {
 	Status  string            `json:"Status"` // human text, e.g. "Up 3 hours"
 	Created int64             `json:"Created"`
 	Labels  map[string]string `json:"Labels"`
+	Ports   []Port            `json:"Ports"`
+}
+
+// Port is one entry of ContainerSummary.Ports.
+//
+// The Engine reports this only for running containers, and lists exposed ports
+// with no host side as well as published ones. A published port usually appears
+// twice, once for the IPv4 wildcard and once for IPv6.
+type Port struct {
+	IP          string `json:"IP"`          // host interface; empty when not published
+	PrivatePort int    `json:"PrivatePort"` // the port inside the container
+	PublicPort  int    `json:"PublicPort"`  // the port on the host; 0 when not published
+	Type        string `json:"Type"`        // tcp | udp | sctp
 }
 
 // ContainerInspect is GET /containers/{id}/json.

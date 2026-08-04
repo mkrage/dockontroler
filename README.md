@@ -13,6 +13,9 @@
 ## What it does
 
 - **Every container on one page**, running and stopped, grouped by Compose project.
+  Tiles on a desktop, one card per line on a phone — same page, no app to install.
+- **The port each service is on**, and a link straight to it where there is a web
+  interface behind it.
 - **Start, stop and restart** with one click.
 - **Choose when a container starts again** — never, unless you stopped it, or always.
 - **Recreate** a container so it picks up a rebuilt image. This is the thing a
@@ -121,6 +124,29 @@ script removes the old container, so the redeploy comes up on the new image.
 
 Nothing else is needed: no Go toolchain, no database, no volume. The whole thing
 is one static binary with the templates compiled in.
+
+## The overview
+
+Each container is a card: state, name, image, its ports, the three actions and the
+restart policy. How many cards sit beside each other is left to the browser — one
+per line on a phone, two or three on a desktop. There is no separate mobile page
+and no client detection; it is the same HTML either way.
+
+**Ports** are the host ports, with the container port after an arrow when the two
+differ (`8080 → 80`). A tcp port on a running container is a link, and it is built
+from the address you are reading the page at: the daemon only knows the port is
+bound to `0.0.0.0`, and nothing here can tell which of the host's addresses reaches
+it — your browser just demonstrated one. Two cases deviate on purpose:
+
+- A port bound to one specific address links to *that* address, because it is the
+  only one that answers.
+- `network_mode: host` publishes nothing, so the ports come from what the image
+  exposes. Those are host ports as they stand.
+
+The scheme is a guess — `https` for container port 443, 8443 and 9443, `http`
+otherwise. Docker knows which ports are published, never what speaks behind them.
+A stopped container still shows its configured mapping, without a link: there is
+nothing listening yet.
 
 ## Configuration
 

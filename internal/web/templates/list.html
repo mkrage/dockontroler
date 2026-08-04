@@ -1,4 +1,7 @@
 {{define "containers"}}
+{{/* The address the browser reached us at. It is what makes a published port
+     clickable: the daemon only knows the port is bound to 0.0.0.0. */}}
+{{$host := .Host}}
 <div class="overview">
 	<p class="overview__summary">
 		<strong>{{.Running}}</strong> of <strong>{{.Total}}</strong> containers running
@@ -21,26 +24,48 @@
 		<span class="project__count">{{len .Containers}}</span>
 	</h2>
 
+	{{/* One card per container, laid out side by side once the viewport has room
+	     for it — see .rows in the stylesheet. */}}
 	<ul class="rows">
 		{{range .Containers}}
 		<li class="row{{if .IsSelf}} row--self{{end}}" data-id="{{.ID}}" data-name="{{.Name}}">
-			<span class="dot dot--{{.StateClass}}" title="{{.State}}"></span>
+			<div class="row__head">
+				<span class="dot dot--{{.StateClass}}" title="{{.State}}"></span>
 
-			<div class="row__ident">
-				<span class="row__name">
-					{{if .ComposeService}}{{.ComposeService}}{{else}}{{.Name}}{{end}}
-					{{if .IsSelf}}<span class="tag">this is me</span>{{end}}
-				</span>
-				<span class="row__sub">
-					<span class="row__image" title="{{.Image}}">{{.Image}}</span>
-					{{if .ComposeService}}<span class="row__cname">{{.Name}}</span>{{end}}
-				</span>
+				<div class="row__ident">
+					<span class="row__name">
+						{{if .ComposeService}}{{.ComposeService}}{{else}}{{.Name}}{{end}}
+						{{if .IsSelf}}<span class="tag">this is me</span>{{end}}
+					</span>
+					<span class="row__sub">
+						<span class="row__image" title="{{.Image}}">{{.Image}}</span>
+						{{if .ComposeService}}<span class="row__cname">{{.Name}}</span>{{end}}
+					</span>
+				</div>
+
+				<span class="row__status" title="{{.Status}}">{{.Status}}</span>
 			</div>
 
-			<div class="row__status">
-				<span>{{.Status}}</span>
-				{{if .Note}}<span class="hint">{{.Note}}</span>{{end}}
+			{{if .Ports}}
+			{{/* A running tcp port becomes a link, because "which port was that
+			     again" is the question this answers. A stopped container shows the
+			     same numbers without one: the mapping is configured, but nothing is
+			     listening yet. */}}
+			{{$running := .Running}}
+			<div class="row__ports">
+				{{range .Ports}}
+				{{$url := .URL $host}}
+				{{if and $running $url}}
+				<a class="port" href="{{$url}}" target="_blank" rel="noopener noreferrer"
+				   title="{{.Detail}}">{{.Label}}</a>
+				{{else}}
+				<span class="port port--idle" title="{{.Detail}}">{{.Label}}</span>
+				{{end}}
+				{{end}}
 			</div>
+			{{end}}
+
+			{{with .Note}}<p class="hint row__note">{{.}}</p>{{end}}
 
 			<div class="row__actions">
 				{{if .Running}}

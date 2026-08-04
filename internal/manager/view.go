@@ -25,6 +25,11 @@ type Container struct {
 	State  string // docker.State* constant
 	Status string // the Engine's own wording, e.g. "Up 3 hours"
 
+	// Ports are the ways this container can be reached from outside, sorted by
+	// host port. Empty for a container that publishes nothing — a database behind
+	// a Compose network, say, which is reachable only by its neighbours.
+	Ports []PortMapping
+
 	// Policy is the restart policy, normalised so that a container created
 	// before policies existed reads as "no" rather than "".
 	Policy string
@@ -148,6 +153,8 @@ func newContainer(summary docker.ContainerSummary, inspected *docker.ContainerIn
 		}
 		container.CanRecreate, container.Note = recreatability(inspected)
 	}
+
+	container.Ports = portsOf(summary, inspected)
 
 	container.ComposeProject = labels[docker.LabelComposeProject]
 	container.ComposeService = labels[docker.LabelComposeService]

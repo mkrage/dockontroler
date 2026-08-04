@@ -167,14 +167,16 @@ code {
 	background: var(--running);
 }
 
+/* Wide enough for three container tiles beside each other on a normal desktop,
+   which is the point of tiles at all — see .rows. */
 .page {
-	max-width: 1100px;
+	max-width: 1400px;
 	margin: 0 auto;
 	padding: 1.25rem;
 }
 
 .footer {
-	max-width: 1100px;
+	max-width: 1400px;
 	margin: 0 auto;
 	padding: 0 1.25rem 2rem;
 	color: var(--text-dim);
@@ -287,24 +289,39 @@ code {
 	letter-spacing: 0;
 }
 
+/* Where the layout adapts to the screen. Each container is a self-contained
+   card; the only difference between a phone and a desktop is how many of them fit
+   beside each other. One column is a list you scroll, three are tiles you scan —
+   same markup, so nothing has to know which client is asking.
+   auto-fill rather than a fixed column count: the browser takes as many as its
+   own width allows, which also covers a half-width window on a big monitor. */
 .rows {
 	list-style: none;
 	margin: 0;
 	padding: 0;
-	display: flex;
-	flex-direction: column;
-	gap: 0.5rem;
+	display: grid;
+	/* minmax(0, ...) rather than a plain 1fr: a track whose minimum is auto grows
+	   to its widest unbreakable content, and one digest-pinned image reference is
+	   enough to push the whole page into sideways scrolling. */
+	grid-template-columns: minmax(0, 1fr);
+	gap: 0.6rem;
+}
+
+/* 58rem is where two cards fit without the three action buttons wrapping. */
+@media (min-width: 58rem) {
+	.rows {
+		grid-template-columns: repeat(auto-fill, minmax(23rem, 1fr));
+	}
 }
 
 /* ---------- one container ---------- */
 
 .row {
-	display: grid;
-	grid-template-columns: auto minmax(9rem, 1fr) minmax(8rem, auto) auto auto;
-	grid-template-areas: "dot ident status actions policy";
-	align-items: center;
-	gap: 0.5rem 1rem;
-	padding: 0.7rem 0.9rem;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	gap: 0.55rem;
+	padding: 0.75rem 0.9rem;
 	background: var(--surface);
 	border: 1px solid var(--border);
 	border-radius: var(--radius);
@@ -320,10 +337,19 @@ code {
 	pointer-events: none;
 }
 
+/* Status dot, name and state text: the line you read when scanning the page. */
+.row__head {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.5rem;
+}
+
 .dot {
-	grid-area: dot;
+	flex: none;
 	width: 9px;
 	height: 9px;
+	/* Lines up with the middle of the name beside it rather than the top of it. */
+	margin-top: 0.42rem;
 	border-radius: 50%;
 	background: var(--stopped);
 }
@@ -342,7 +368,7 @@ code {
 }
 
 .row__ident {
-	grid-area: ident;
+	flex: 1 1 auto;
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
@@ -366,8 +392,12 @@ code {
 	font-size: 0.8rem;
 }
 
+/* min-width, because a flex item refuses to shrink below its content by default
+   and the ellipsis would never come into play — an image pinned to a digest is
+   80 characters of unbreakable text. */
 .row__image,
 .row__cname {
+	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -389,12 +419,64 @@ code {
 	letter-spacing: 0.04em;
 }
 
+/* "Up 3 hours" sits opposite the name. It gives way first when a card is narrow:
+   the name identifies the container, and the dot already carries the state. */
 .row__status {
-	grid-area: status;
-	display: flex;
-	flex-direction: column;
+	/* Shrinks three times as eagerly as the name beside it, so a narrow card clips
+	   "Exited (0) 12 minutes ago" before it clips what the container is — but not
+	   below the floor, because "Exi…" tells nobody anything. */
+	flex: 0 3 auto;
+	min-width: 5.5rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 	color: var(--text-dim);
-	font-size: 0.85rem;
+	font-size: 0.82rem;
+}
+
+/* ---------- ports ---------- */
+
+.row__ports {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.3rem;
+}
+
+.port {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.2rem;
+	padding: 0.1rem 0.45rem;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	background: var(--surface-alt);
+	color: var(--accent);
+	font-size: 0.76rem;
+	font-variant-numeric: tabular-nums;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+/* Marks the chip as something to click, without needing a hover to find out. */
+a.port::after {
+	content: "↗";
+	font-size: 0.9em;
+	opacity: 0.7;
+}
+
+a.port:hover {
+	border-color: var(--accent);
+	text-decoration: underline;
+}
+
+/* A mapping that exists but has nothing behind it right now: a stopped
+   container's configured binding, or a udp port a browser cannot open. */
+.port--idle {
+	color: var(--text-dim);
+}
+
+.row__note {
+	margin: 0;
 }
 
 .hint {
@@ -403,12 +485,12 @@ code {
 	font-style: italic;
 }
 
-/* Compose paths are long, and a row is not the place to let one push the layout
+/* Compose paths are long, and a card is not the place to let one push the layout
    around. Clipped at the end with the whole path in the title: what gets cut is the
    file name, which is docker-compose.yml on nearly every stack anyway, while the
    directory that identifies it stays visible. */
 .hint--path {
-	max-width: 15rem;
+	max-width: 100%;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -417,22 +499,29 @@ code {
 	font-size: 0.72rem;
 }
 
+/* Three equal buttons across the card, so the same one is always in the same
+   place — the price of a misclick here is a stopped service. */
 .row__actions {
-	grid-area: actions;
 	display: flex;
+	flex-wrap: wrap;
 	gap: 0.35rem;
 }
 
 .row__actions form {
 	margin: 0;
+	flex: 1 1 6rem;
+}
+
+.row__actions .btn {
+	flex: 1 1 6rem;
+	width: 100%;
 }
 
 .row__policy {
-	grid-area: policy;
 	display: flex;
 	flex-direction: column;
-	align-items: flex-end;
-	gap: 0.15rem;
+	align-items: stretch;
+	gap: 0.2rem;
 }
 
 /* ---------- buttons ---------- */
@@ -481,9 +570,11 @@ code {
 	outline-offset: 2px;
 }
 
-/* Segmented control for the restart policy. */
+/* Segmented control for the restart policy. Full width of the card, thirds, so
+   the active one reads as a setting rather than as three more buttons. */
 .seg {
-	display: inline-flex;
+	display: flex;
+	width: 100%;
 	margin: 0;
 	border: 1px solid var(--border-strong);
 	border-radius: 5px;
@@ -491,6 +582,7 @@ code {
 }
 
 .seg__btn {
+	flex: 1;
 	padding: 0.3rem 0.6rem;
 	border: 0;
 	border-left: 1px solid var(--border);
@@ -519,40 +611,20 @@ code {
 
 /* ---------- narrow screens ---------- */
 
-@media (max-width: 860px) {
-	.row {
-		grid-template-columns: auto minmax(0, 1fr);
-		grid-template-areas:
-			"dot ident"
-			"status status"
-			"actions actions"
-			"policy policy";
-		align-items: start;
-		row-gap: 0.6rem;
+/* The card layout above is already the phone layout, so this is only about the
+   frame around it: page padding, and the policy labels which no longer fit as
+   thirds of a 320-pixel screen. */
+@media (max-width: 30rem) {
+	.page {
+		padding: 0.9rem 0.75rem;
 	}
 
-	.dot {
-		margin-top: 0.45rem;
-	}
-
-	.row__policy {
-		align-items: stretch;
-	}
-
-	.seg {
-		width: 100%;
+	.footer {
+		padding: 0 0.75rem 1.5rem;
 	}
 
 	.seg__btn {
-		flex: 1;
-	}
-
-	.row__actions .btn,
-	.row__actions form {
-		flex: 1;
-	}
-
-	.row__actions .btn {
-		width: 100%;
+		padding: 0.3rem 0.35rem;
+		font-size: 0.74rem;
 	}
 }

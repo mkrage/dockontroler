@@ -65,8 +65,17 @@ func (s *stubEngine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (s *stubEngine) summary() docker.ContainerSummary {
 	state, status := docker.StateExited, "Exited (0) 1 minute ago"
+	var ports []docker.Port
 	if s.running {
 		state, status = docker.StateRunning, "Up 3 hours"
+		// As the Engine reports it: one published port per address family, plus a
+		// port the image only exposes. Ports are absent entirely while stopped,
+		// which is what makes the fallback to HostConfig.PortBindings matter.
+		ports = []docker.Port{
+			{IP: "0.0.0.0", PrivatePort: 80, PublicPort: 8080, Type: "tcp"},
+			{IP: "::", PrivatePort: 80, PublicPort: 8080, Type: "tcp"},
+			{PrivatePort: 9000, Type: "tcp"},
+		}
 	}
 	return docker.ContainerSummary{
 		ID:      testContainerID,
@@ -75,6 +84,7 @@ func (s *stubEngine) summary() docker.ContainerSummary {
 		State:   state,
 		Status:  status,
 		Created: time.Now().Add(-time.Hour).Unix(),
+		Ports:   ports,
 		Labels: map[string]string{
 			docker.LabelComposeProject:     "blog",
 			docker.LabelComposeService:     "web",
@@ -106,6 +116,9 @@ func (s *stubEngine) inspect() map[string]any {
 		"HostConfig": map[string]any{
 			"NetworkMode":   "blog_default",
 			"RestartPolicy": map[string]any{"Name": policy},
+			"PortBindings": map[string]any{
+				"80/tcp": []any{map[string]any{"HostIp": "", "HostPort": "8080"}},
+			},
 		},
 		"NetworkSettings": map[string]any{"Networks": map[string]any{}},
 	}
@@ -163,6 +176,53 @@ func TestIndexRendersTheContainerList(t *testing.T) {
 	// its yaml, so the row has to say which file to write it into.
 	if !strings.Contains(body, "/data/compose/7/docker-compose.yml") {
 		t.Error("the row does not name the compose file the policy has to be written into")
+	}
+}
+
+// TestIndexShowsPortsAndLinksThem covers the point of showing ports at all: being
+// able to go from "which port was that again" to the service in one click. The
+// link has to be built from the address the browser used, because a wildcard
+// binding is not something anyone can open.
+func TestIndexShowsPortsAndLinksThem(t *testing.T) {
+	handler, engine := newTestServer(t)
+
+	request := httptest.NewRequest(http.MethodGet, "/", nil)
+	request.Host = "192.168.1.10:3625"
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	body := recorder.Body.String()
+
+	if !strings.Contains(body, `href="http://192.168.1.10:8080"`) {
+		t.Errorf("no link to the published port built from the browser's own address:\n%s", body)
+	}
+	if !strings.Contains(body, "8080 → 80") {
+		t.Error("the port mapping is not shown")
+	}
+	// Reported twice by the Engine, once per address family, but it is one port.
+	if count := strings.Count(body, "8080 → 80"); count != 1 {
+		t.Errorf("the port is shown %d times, want once", count)
+	}
+	// Exposed by the image but not published: unreachable, so naming it would
+	// only offer a link that cannot work.
+	if strings.Contains(body, ">9000<") {
+		t.Error("an exposed-but-unpublished port is shown as if it were reachable")
+	}
+
+	// Stopped: the mapping is still worth showing, a link is not — nothing is
+	// listening on it.
+	engine.mu.Lock()
+	engine.running = false
+	engine.mu.Unlock()
+
+	recorder = httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	body = recorder.Body.String()
+
+	if !strings.Contains(body, "8080 → 80") {
+		t.Error("a stopped container does not show its configured port")
+	}
+	if strings.Contains(body, `href="http://192.168.1.10:8080"`) {
+		t.Error("a stopped container's port is offered as a link")
 	}
 }
 
