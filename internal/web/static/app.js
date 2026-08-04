@@ -56,6 +56,18 @@
 		}, 300);
 	}
 
+	function stoppedIsOpen() {
+		var section = containers.querySelector(".stopped");
+		return !!section && section.open;
+	}
+
+	function setStoppedOpen(open) {
+		var section = containers.querySelector(".stopped");
+		if (section) {
+			section.open = open;
+		}
+	}
+
 	function refresh(force) {
 		if (!force && (inFlight > 0 || document.hidden)) {
 			return Promise.resolve();
@@ -86,7 +98,13 @@
 
 			var signature = incoming.innerHTML;
 			if (signature !== lastSignature) {
+				// The refreshed markup always arrives with the "not running" section
+				// folded, so reinserting it would slam it shut under a user who is
+				// reading it. Comparing incoming markup against incoming markup means
+				// this survives every later poll too.
+				var wasOpen = stoppedIsOpen();
 				containers.innerHTML = signature;
+				setStoppedOpen(wasOpen);
 				lastSignature = signature;
 			}
 			blinkPulse();
@@ -145,6 +163,21 @@
 			// Force it: the whole point of the action was to change something.
 			return refresh(true);
 		});
+	});
+
+	// The restart policy is a select, and a select with a submit button beside it
+	// would put the wall of controls straight back. So changing it posts the form —
+	// which lands in the submit handler above like any other action. Without
+	// JavaScript the form carries its own button; see the template.
+	document.addEventListener("change", function (event) {
+		var select = event.target;
+		if (!(select instanceof HTMLSelectElement) || !containers.contains(select)) {
+			return;
+		}
+		var form = select.form;
+		if (form && typeof form.requestSubmit === "function") {
+			form.requestSubmit();
+		}
 	});
 
 	if (refreshButton) {

@@ -40,6 +40,37 @@ type overviewData struct {
 	Host string
 }
 
+// card is what the template renders one container from: the container itself plus
+// the host, which every published port needs to become a link.
+type card struct {
+	manager.Container
+	Host string
+}
+
+// Active and Stopped split the overview into the grid you look at and the section
+// you unfold when you go looking for something.
+//
+// The split lives here, not in the manager: Overview.Groups is what /api/containers
+// serves, and a scripted consumer should keep getting every container in one
+// predictable shape no matter how the page happens to arrange them today.
+func (o overviewData) Active() []card { return o.cards(true) }
+
+func (o overviewData) Stopped() []card { return o.cards(false) }
+
+// cards flattens the groups, keeping their order, so containers of one Compose
+// project stay next to each other in the grid.
+func (o overviewData) cards(active bool) []card {
+	var cards []card
+	for _, group := range o.Groups {
+		for _, container := range group.Containers {
+			if container.Active() == active {
+				cards = append(cards, card{Container: container, Host: o.Host})
+			}
+		}
+	}
+	return cards
+}
+
 // linkHost is the request's host without its port, ready to drop into a URL.
 // IPv6 literals keep their brackets, or the link would end at the first colon.
 func linkHost(r *http.Request) string {

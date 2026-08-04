@@ -14,7 +14,7 @@
 
 - **Every container on one page**, running and stopped, ordered by Compose project.
   As many tiles per line as the screen has room for — seven on a wide monitor, one
-  on a phone. Same page, no app to install.
+  on a phone. Same page, no app to install. What is stopped folds away below.
 - **The port each service is on**, and a link straight to it where there is a web
   interface behind it.
 - **Start, stop and restart** with one click.
@@ -128,10 +128,22 @@ is one static binary with the templates compiled in.
 
 ## The overview
 
-Each container is a card: state, name, image, its ports, the three actions and the
-restart policy. How many cards sit beside each other is left to the browser — one
-per line on a phone, four on a laptop, seven on a 2560-pixel monitor. There is no
-separate mobile page and no client detection; it is the same HTML either way.
+Each container is a card: name and state on the first line, then the image, its
+ports, the three actions and the autostart setting. How many cards sit beside each
+other is left to the browser — one per line on a phone, four on a laptop, seven on a
+2560-pixel monitor. There is no separate mobile page and no client detection; it is
+the same HTML either way.
+
+**The state is the card's left edge** — green running, amber restarting, red dead,
+grey stopped. A colour is scannable across thirty cards in a way a dot beside thirty
+names is not, and nothing depends on seeing it: the status text says the same thing
+in Docker's own words.
+
+**What is not running has its own folded section** below the grid. On a host where
+six of thirty-three containers are stopped on purpose, they are what you go looking
+for, not what you watch. A container *restarting* stays in the grid: a crash loop is
+the one thing on the page that wants attention, and it is offered **Stop** rather
+than Start, because Docker cannot start what is already trying.
 
 The cards form **one grid, not a section per Compose project**. A project is not a
 layout unit: on a typical host two thirds of them hold a single container, so a
@@ -196,13 +208,19 @@ call itself.
 
 ## Restart policies
 
-The three buttons on each row map to Docker's restart policies:
+The **Autostart** control on each card maps to Docker's restart policies:
 
-| Button | Docker policy | Behaviour |
+| Setting | Docker policy | Behaviour |
 | --- | --- | --- |
-| **Never** | `no` | Stays down after a reboot or a daemon restart. |
-| **Unless stopped** | `unless-stopped` | Comes back on boot, unless you stopped it yourself. |
-| **Always** | `always` | Comes back on boot even if you stopped it yourself. |
+| **never** | `no` | Stays down after a reboot or a daemon restart. |
+| **unless stopped** | `unless-stopped` | Comes back on boot, unless you stopped it yourself. |
+| **always** | `always` | Comes back on boot even if you stopped it yourself. |
+
+It is a dropdown rather than three buttons because it is one setting with one value,
+and three buttons on thirty cards turn a page into a wall of controls. Choosing a
+value applies it; without JavaScript the form shows its own submit button. A policy
+Docker reports but this tool does not offer — `on-failure` with its retry count —
+is displayed as the current value and cannot be selected.
 
 Changing a policy takes effect immediately, works on stopped containers, and never
 starts or restarts anything by itself.

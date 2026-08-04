@@ -1,7 +1,4 @@
 {{define "containers"}}
-{{/* The address the browser reached us at. It is what makes a published port
-     clickable: the daemon only knows the port is bound to 0.0.0.0. */}}
-{{$host := .Host}}
 <div class="overview">
 	<p class="overview__summary">
 		<strong>{{.Running}}</strong> of <strong>{{.Total}}</strong> containers running
@@ -15,120 +12,131 @@
 
 {{if not .Groups}}
 <p class="empty">No containers on this host yet.</p>
-{{else}}
-{{/* One flat grid over every container, not a grid per Compose project.
-     A project is not a layout unit: two thirds of a typical host's projects hold a
-     single container, and a section per project means a row per project — which is
-     how a wide monitor ends up showing one card per line and scrolling for pages.
-     The containers of a project stay next to each other because they are sorted
-     that way, and each card names its own project. */}}
+{{end}}
+
+{{/* One flat grid over every container that is up, not a section per Compose
+     project. A project is not a layout unit: on a typical host two thirds of them
+     hold a single container, so a section each means a row each — which is how a
+     wide monitor ends up showing one card per line. The containers of a project
+     stay next to each other because that is how they are sorted, and each card
+     names its own project. */}}
+{{with .Active}}
 <ul class="rows">
-	{{range .Groups}}
-	{{$project := .Project}}
-	{{range .Containers}}
-		<li class="row{{if .IsSelf}} row--self{{end}}" data-id="{{.ID}}" data-name="{{.Name}}">
-			<div class="row__head">
-				<span class="dot dot--{{.StateClass}}" title="{{.State}}"></span>
-
-				{{/* Project and image, not the container name as well: a card is too
-				     narrow for three truncated strings, and the container name of a
-				     Compose service is its project and service with a number after it —
-				     which the first two already say. It stays one hover away. */}}
-				<div class="row__ident">
-					<span class="row__name" title="{{.Name}}">
-						{{if .ComposeService}}{{.ComposeService}}{{else}}{{.Name}}{{end}}
-						{{if .IsSelf}}<span class="tag">this is me</span>{{end}}
-					</span>
-					<span class="row__sub">
-						{{/* Not when the project and the service are the same word, which is
-						     what a one-service stack looks like: the name above already
-						     says it, and repeating it costs half the line. */}}
-						{{if and $project (ne $project .ComposeService)}}
-						<span class="row__project" title="Compose project {{$project}}">{{$project}}</span>
-						{{end}}
-						<span class="row__image" title="{{.Image}}">{{.Image}}</span>
-					</span>
-				</div>
-
-				<span class="row__status" title="{{.Status}}">{{.Status}}</span>
-			</div>
-
-			{{if .Ports}}
-			{{/* A running tcp port becomes a link, because "which port was that
-			     again" is the question this answers. A stopped container shows the
-			     same numbers without one: the mapping is configured, but nothing is
-			     listening yet. */}}
-			{{$running := .Running}}
-			<div class="row__ports">
-				{{range .Ports}}
-				{{$url := .URL $host}}
-				{{if and $running $url}}
-				<a class="port" href="{{$url}}" target="_blank" rel="noopener noreferrer"
-				   title="{{.Detail}}">{{.Label}}</a>
-				{{else}}
-				<span class="port port--idle" title="{{.Detail}}">{{.Label}}</span>
-				{{end}}
-				{{end}}
-			</div>
-			{{end}}
-
-			{{with .Note}}<p class="hint row__note">{{.}}</p>{{end}}
-
-			<div class="row__actions">
-				{{if .Running}}
-					{{if .IsSelf}}
-					<button type="button" class="btn" disabled title="docKontroler will not stop itself">Stop</button>
-					<button type="button" class="btn" disabled title="docKontroler will not restart itself">Restart</button>
-					{{else}}
-					<form method="post" action="/containers/{{.ID}}/stop">
-						<button type="submit" class="btn btn--danger">Stop</button>
-					</form>
-					<form method="post" action="/containers/{{.ID}}/restart">
-						<button type="submit" class="btn">Restart</button>
-					</form>
-					{{end}}
-				{{else}}
-					<form method="post" action="/containers/{{.ID}}/start">
-						<button type="submit" class="btn btn--primary">Start</button>
-					</form>
-					<button type="button" class="btn" disabled title="Container is not running">Restart</button>
-				{{end}}
-
-				{{if .CanRecreate}}
-				<form method="post" action="/containers/{{.ID}}/recreate"
-				      data-confirm="Recreate &quot;{{.Name}}&quot;?&#10;&#10;It is replaced by a new container built from {{.Image}} as it stands right now. Configuration, volumes and networks are carried over; if anything fails the original is restored.">
-					<button type="submit" class="btn">Recreate</button>
-				</form>
-				{{else}}
-				<button type="button" class="btn" disabled title="Cannot recreate: {{if .Note}}{{.Note}}{{else}}not supported for this container{{end}}">Recreate</button>
-				{{end}}
-			</div>
-
-			<div class="row__policy">
-				<form method="post" action="/containers/{{.ID}}/policy" class="seg">
-					<button type="submit" name="policy" value="no"
-					        class="seg__btn{{if .PolicyIs "no"}} is-active{{end}}"
-					        title="Never start on its own">Never</button>
-					<button type="submit" name="policy" value="unless-stopped"
-					        class="seg__btn{{if .PolicyIs "unless-stopped"}} is-active{{end}}"
-					        title="Start on boot, unless you stopped it yourself">Unless stopped</button>
-					<button type="submit" name="policy" value="always"
-					        class="seg__btn{{if .PolicyIs "always"}} is-active{{end}}"
-					        title="Always start, even if you stopped it yourself">Always</button>
-				</form>
-				{{if not (or (.PolicyIs "no") (.PolicyIs "unless-stopped") (.PolicyIs "always"))}}
-				<span class="hint">currently: {{.Policy}}</span>
-				{{end}}
-				{{/* if, not with: the label and the full path in the title both come
-				     from the container, so the dot has to stay pointing at it. */}}
-				{{if .PolicyFile}}
-				<span class="hint hint--path"
-				      title="Set restart: in this file too, or the next rebuild from compose overwrites the policy. Path as compose recorded it: {{.PolicyFile}}">restart: in {{.PolicyFileLabel}}</span>
-				{{end}}
-			</div>
-		</li>
-	{{end}}
-	{{end}}
+	{{range .}}{{template "card" .}}{{end}}
 </ul>
 {{end}}
+
+{{/* What is not running is what you go looking for, not what you watch. It keeps
+     its own section, folded away, so the everyday page is only the live host.
+     Anything restarting stays in the grid above: a crash loop is not idle. */}}
+{{with .Stopped}}
+<details class="stopped">
+	<summary class="stopped__summary">
+		not running <span class="stopped__count">{{len .}}</span>
+	</summary>
+	<ul class="rows">
+		{{range .}}{{template "card" .}}{{end}}
+	</ul>
+</details>
+{{end}}
+{{end}}
+
+{{/* One container. The state is the left edge, the name and its port are what the
+     eye should land on, and the controls are deliberately quieter than both. */}}
+{{define "card"}}
+{{$host := .Host}}
+<li class="row row--{{.StateClass}}{{if .IsSelf}} row--self{{end}}"
+    data-id="{{.ID}}" data-name="{{.Name}}">
+	<div class="row__head">
+		<span class="row__name" title="{{.Name}}">
+			{{if .ComposeService}}{{.ComposeService}}{{else}}{{.Name}}{{end}}
+			{{if .IsSelf}}<span class="tag">this is me</span>{{end}}
+		</span>
+		<span class="row__status" title="{{.State}} — {{.Status}}">{{.Status}}</span>
+	</div>
+
+	{{/* Project and image, not the container name as well: a card is too narrow for
+	     three truncated strings, and the container name of a Compose service is its
+	     project and service with a number after it — which the first two already
+	     say. It stays one hover away, on the name. */}}
+	<span class="row__sub">
+		{{if and .ComposeProject (ne .ComposeProject .ComposeService)}}
+		<span class="row__project" title="Compose project {{.ComposeProject}}">{{.ComposeProject}}</span>
+		{{end}}
+		<span class="row__image" title="{{.Image}}">{{.Image}}</span>
+	</span>
+
+	{{if .Ports}}
+	{{/* A running tcp port becomes a link, because "which port was that again" is
+	     the question this answers. A stopped container shows the same numbers
+	     without one: the mapping is configured, but nothing is listening yet. */}}
+	{{$running := .Running}}
+	<div class="row__ports">
+		{{range .Ports}}
+		{{$url := .URL $host}}
+		{{if and $running $url}}
+		<a class="port" href="{{$url}}" target="_blank" rel="noopener noreferrer"
+		   title="{{.Detail}}">{{.Label}}</a>
+		{{else}}
+		<span class="port port--idle" title="{{.Detail}}">{{.Label}}</span>
+		{{end}}
+		{{end}}
+	</div>
+	{{end}}
+
+	{{with .Note}}<p class="hint row__note">{{.}}</p>{{end}}
+
+	{{/* Active, not Running: a container in a restart loop is not started again, it
+	     is stopped — offering Start there would be the one button that cannot help.
+	     Docker stops a restarting or paused container happily; starting one fails. */}}
+	<div class="row__actions">
+		{{if .Active}}
+			{{if .IsSelf}}
+			<button type="button" class="btn" disabled title="docKontroler will not stop itself">Stop</button>
+			<button type="button" class="btn" disabled title="docKontroler will not restart itself">Restart</button>
+			{{else}}
+			<form method="post" action="/containers/{{.ID}}/stop">
+				<button type="submit" class="btn btn--danger">Stop</button>
+			</form>
+			<form method="post" action="/containers/{{.ID}}/restart">
+				<button type="submit" class="btn">Restart</button>
+			</form>
+			{{end}}
+		{{else}}
+			<form method="post" action="/containers/{{.ID}}/start">
+				<button type="submit" class="btn btn--primary">Start</button>
+			</form>
+			<button type="button" class="btn" disabled title="Container is not running">Restart</button>
+		{{end}}
+
+		{{if .CanRecreate}}
+		<form method="post" action="/containers/{{.ID}}/recreate"
+		      data-confirm="Recreate &quot;{{.Name}}&quot;?&#10;&#10;It is replaced by a new container built from {{.Image}} as it stands right now. Configuration, volumes and networks are carried over; if anything fails the original is restored.">
+			<button type="submit" class="btn">Recreate</button>
+		</form>
+		{{else}}
+		<button type="button" class="btn" disabled title="Cannot recreate: {{if .Note}}{{.Note}}{{else}}not supported for this container{{end}}">Recreate</button>
+		{{end}}
+	</div>
+
+	{{/* One select rather than three buttons: this is a setting with one value, and
+	     as a segmented control it put six controls on every card — a wall of them
+	     across a full page. It posts on change; the submit button is there for the
+	     browser without JavaScript, which cannot. */}}
+	<form method="post" action="/containers/{{.ID}}/policy" class="policy">
+		<label class="policy__label" for="policy-{{.ShortID}}">Autostart</label>
+		<select class="policy__select" id="policy-{{.ShortID}}" name="policy"
+		        title="When Docker starts this container by itself.{{with .PolicyFile}} Set restart: in {{.}} too, or the next rebuild from compose overwrites it.{{end}}">
+			<option value="no"{{if .PolicyIs "no"}} selected{{end}}>never</option>
+			<option value="unless-stopped"{{if .PolicyIs "unless-stopped"}} selected{{end}}>unless stopped</option>
+			<option value="always"{{if .PolicyIs "always"}} selected{{end}}>always</option>
+			{{if not (or (.PolicyIs "no") (.PolicyIs "unless-stopped") (.PolicyIs "always"))}}
+			{{/* A policy docKontroler does not offer, on-failure for instance. Shown so
+			     the control does not misreport it, and not selectable. */}}
+			<option value="" selected disabled>{{.Policy}}</option>
+			{{end}}
+		</select>
+		<noscript><button type="submit" class="btn btn--slim">Set</button></noscript>
+	</form>
+</li>
 {{end}}

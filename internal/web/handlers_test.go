@@ -166,10 +166,10 @@ func TestIndexRendersTheContainerList(t *testing.T) {
 		}
 	}
 
-	// The active policy must be visibly marked, or the control tells the user
-	// nothing about the current state.
-	if !strings.Contains(body, "is-active") {
-		t.Error("no policy button is marked active")
+	// The current policy must be the one the control shows, or it tells the user
+	// nothing about the state it is supposed to represent.
+	if !strings.Contains(body, `value="unless-stopped" selected`) {
+		t.Error("the policy control does not preselect the container's own policy")
 	}
 
 	// A policy set here is overwritten the next time the container is rebuilt from
@@ -223,6 +223,42 @@ func TestIndexShowsPortsAndLinksThem(t *testing.T) {
 	}
 	if strings.Contains(body, `href="http://192.168.1.10:8080"`) {
 		t.Error("a stopped container's port is offered as a link")
+	}
+}
+
+// TestStoppedContainersGetTheirOwnSection: the grid is for the live host, and what
+// is not running is folded away below it. The section must not be there when there
+// is nothing in it, and a running container must never end up inside it.
+func TestStoppedContainersGetTheirOwnSection(t *testing.T) {
+	handler, engine := newTestServer(t)
+
+	page := func() string {
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/", nil))
+		return recorder.Body.String()
+	}
+
+	body := page()
+	if strings.Contains(body, `class="stopped"`) {
+		t.Error("the not-running section is rendered while everything is running")
+	}
+
+	engine.mu.Lock()
+	engine.running = false
+	engine.mu.Unlock()
+
+	body = page()
+	section := strings.Index(body, `class="stopped"`)
+	if section < 0 {
+		t.Fatalf("no section for the stopped container:\n%s", body)
+	}
+	if card := strings.Index(body, "blog-web-1"); card < section {
+		t.Error("the stopped container is in the grid above instead of the folded section")
+	}
+	// Folded by default: opening it is the user's decision, and app.js keeps it open
+	// across refreshes.
+	if strings.Contains(body, "<details open") {
+		t.Error("the section starts unfolded, which is the noise it exists to avoid")
 	}
 }
 

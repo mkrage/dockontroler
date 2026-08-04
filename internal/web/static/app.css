@@ -298,16 +298,36 @@ code {
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
-	gap: 0.55rem;
-	padding: 0.75rem 0.9rem;
+	gap: 0.4rem;
+	padding: 0.7rem 0.85rem;
 	background: var(--surface);
 	border: 1px solid var(--border);
+	/* The state lives on this edge, which is why it is wider than the rest of the
+	   border. A colour is scannable across thirty cards in a way a small dot beside
+	   thirty names is not; the status text carries the same thing in words, so
+	   nothing depends on seeing the colour. */
+	border-left: 3px solid var(--stopped);
 	border-radius: var(--radius);
 	box-shadow: var(--shadow);
 }
 
+.row--running {
+	border-left-color: var(--running);
+}
+
+.row--transitional {
+	border-left-color: var(--transitional);
+}
+
+.row--error {
+	border-left-color: var(--error);
+}
+
+/* Set after the state colours so it can only claim the other three edges. */
 .row--self {
-	border-color: var(--accent);
+	border-top-color: var(--accent);
+	border-right-color: var(--accent);
+	border-bottom-color: var(--accent);
 }
 
 .row.is-busy {
@@ -315,48 +335,22 @@ code {
 	pointer-events: none;
 }
 
-/* Status dot, name and state text: the line you read when scanning the page. */
+/* The line the eye should land on: what this container is, and how it is doing. */
 .row__head {
 	display: flex;
-	align-items: flex-start;
+	align-items: baseline;
 	gap: 0.5rem;
 }
 
-.dot {
-	flex: none;
-	width: 9px;
-	height: 9px;
-	/* Lines up with the middle of the name beside it rather than the top of it. */
-	margin-top: 0.42rem;
-	border-radius: 50%;
-	background: var(--stopped);
-}
-
-.dot--running {
-	background: var(--running);
-	box-shadow: 0 0 0 3px color-mix(in srgb, var(--running) 22%, transparent);
-}
-
-.dot--transitional {
-	background: var(--transitional);
-}
-
-.dot--error {
-	background: var(--error);
-}
-
-.row__ident {
-	flex: 1 1 auto;
-	display: flex;
-	flex-direction: column;
-	min-width: 0;
-}
-
 .row__name {
+	flex: 1 1 auto;
 	display: flex;
 	align-items: center;
 	gap: 0.4rem;
-	font-weight: 600;
+	min-width: 0;
+	font-size: 1rem;
+	font-weight: 650;
+	letter-spacing: -0.01em;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -412,7 +406,7 @@ code {
 }
 
 /* "Up 3 hours" sits opposite the name. It gives way first when a card is narrow:
-   the name identifies the container, and the dot already carries the state. */
+   the name identifies the container, and the left edge already carries the state. */
 .row__status {
 	/* Shrinks three times as eagerly as the name beside it, so a narrow card clips
 	   "Exited (0) 12 minutes ago" before it clips what the container is — but not
@@ -477,26 +471,13 @@ a.port:hover {
 	font-style: italic;
 }
 
-/* Compose paths are long, and a card is not the place to let one push the layout
-   around. Clipped at the end with the whole path in the title: what gets cut is the
-   file name, which is docker-compose.yml on nearly every stack anyway, while the
-   directory that identifies it stays visible. */
-.hint--path {
-	max-width: 100%;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	font-style: normal;
-	font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-	font-size: 0.72rem;
-}
-
 /* Three equal buttons across the card, so the same one is always in the same
-   place — the price of a misclick here is a stopped service. */
+   place — the price of a misclick here is a stopped service. Quieter than the name
+   and the port above them: they are what you use once you have found the card. */
 .row__actions {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 0.35rem;
+	gap: 0.3rem;
 }
 
 /* The basis has to stay under a third of the narrowest card, or the three buttons
@@ -509,13 +490,49 @@ a.port:hover {
 .row__actions .btn {
 	flex: 1 1 5rem;
 	width: 100%;
+	padding: 0.28rem 0.4rem;
+	font-size: 0.8rem;
 }
 
-.row__policy {
+/* ---------- the restart policy ---------- */
+
+/* A labelled setting on one line, which is what it is. As a segmented control it
+   was three buttons per card, and thirty cards made a page of nothing but
+   controls. */
+.policy {
 	display: flex;
-	flex-direction: column;
-	align-items: stretch;
-	gap: 0.2rem;
+	align-items: center;
+	gap: 0.4rem;
+	margin: 0;
+	min-width: 0;
+}
+
+.policy__label {
+	flex: none;
+	color: var(--text-dim);
+	font-size: 0.76rem;
+}
+
+.policy__select {
+	flex: 1 1 auto;
+	min-width: 0;
+	padding: 0.16rem 0.3rem;
+	border: 1px solid var(--border);
+	border-radius: 5px;
+	background: var(--surface);
+	color: var(--text);
+	font: inherit;
+	font-size: 0.78rem;
+	cursor: pointer;
+}
+
+.policy__select:hover {
+	border-color: var(--border-strong);
+}
+
+.policy__select:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 1px;
 }
 
 /* ---------- buttons ---------- */
@@ -558,56 +575,62 @@ a.port:hover {
 	border-color: color-mix(in srgb, var(--danger) 45%, var(--border-strong));
 }
 
-.btn:focus-visible,
-.seg__btn:focus-visible {
+.btn:focus-visible {
 	outline: 2px solid var(--accent);
 	outline-offset: 2px;
 }
 
-/* Segmented control for the restart policy. Full width of the card, thirds, so
-   the active one reads as a setting rather than as three more buttons. */
-.seg {
+/* Only ever seen without JavaScript, where the policy form needs something to
+   submit it. */
+.btn--slim {
+	flex: none;
+	padding: 0.16rem 0.4rem;
+	font-size: 0.76rem;
+}
+
+/* ---------- what is not running ---------- */
+
+/* Folded away by default: on a host where six of thirty-three containers are
+   stopped on purpose, they are what you go looking for, not what you watch. */
+.stopped {
+	margin-top: 1.5rem;
+}
+
+.stopped__summary {
 	display: flex;
-	width: 100%;
-	margin: 0;
-	border: 1px solid var(--border-strong);
-	border-radius: 5px;
-	overflow: hidden;
-}
-
-.seg__btn {
-	flex: 1;
-	padding: 0.3rem 0.6rem;
-	border: 0;
-	border-left: 1px solid var(--border);
-	background: var(--surface);
+	align-items: center;
+	gap: 0.5rem;
+	width: fit-content;
+	padding: 0.2rem 0;
 	color: var(--text-dim);
-	font: inherit;
-	font-size: 0.8rem;
+	font-size: 0.78rem;
+	font-weight: 650;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
 	cursor: pointer;
-	white-space: nowrap;
 }
 
-.seg__btn:first-child {
-	border-left: 0;
-}
-
-.seg__btn:hover {
-	background: var(--surface-alt);
+.stopped__summary:hover {
 	color: var(--text);
 }
 
-.seg__btn.is-active {
-	background: var(--accent);
-	color: var(--accent-text);
-	font-weight: 600;
+.stopped__count {
+	padding: 0.05rem 0.4rem;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	background: var(--surface-alt);
+	font-size: 0.72rem;
+	letter-spacing: 0;
+}
+
+.stopped[open] .stopped__summary {
+	margin-bottom: 0.6rem;
 }
 
 /* ---------- narrow screens ---------- */
 
 /* The card layout above is already the phone layout, so this is only about the
-   frame around it: page padding, and the policy labels which no longer fit as
-   thirds of a 320-pixel screen. */
+   frame around it. */
 @media (max-width: 30rem) {
 	.page {
 		padding: 0.9rem 0.75rem;
@@ -615,10 +638,5 @@ a.port:hover {
 
 	.footer {
 		padding: 0 0.75rem 1.5rem;
-	}
-
-	.seg__btn {
-		padding: 0.3rem 0.35rem;
-		font-size: 0.74rem;
 	}
 }
