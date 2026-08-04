@@ -247,6 +247,14 @@
 		if (!(select instanceof HTMLSelectElement) || !containers.contains(select)) {
 			return;
 		}
+		// The text beside the select is what gives the control its width, so it has to
+		// say what the select now says — the server renders it correctly again on the
+		// next refresh, which is too late to watch your own click take effect.
+		var shown = select.parentNode && select.parentNode.querySelector(".policy__text");
+		if (shown && select.selectedIndex >= 0) {
+			shown.textContent = select.options[select.selectedIndex].text;
+		}
+
 		var form = select.form;
 		if (form && typeof form.requestSubmit === "function") {
 			form.requestSubmit();

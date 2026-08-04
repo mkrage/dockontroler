@@ -164,17 +164,35 @@
 		     browser without JavaScript, which cannot. */}}
 		<form method="post" action="/containers/{{.ID}}/policy" class="policy">
 			<label class="policy__label" for="policy-{{.ShortID}}">Autostart</label>
-			<select class="policy__select" id="policy-{{.ShortID}}" name="policy"
-			        title="When Docker starts this container by itself.{{with .PolicyFile}} Set restart: in {{.}} too, or the next rebuild from compose overwrites it.{{end}}">
-				<option value="no"{{if .PolicyIs "no"}} selected{{end}}>never</option>
-				<option value="unless-stopped"{{if .PolicyIs "unless-stopped"}} selected{{end}}>unless stopped</option>
-				<option value="always"{{if .PolicyIs "always"}} selected{{end}}>always</option>
-				{{if not (or (.PolicyIs "no") (.PolicyIs "unless-stopped") (.PolicyIs "always"))}}
-				{{/* A policy docKontroler does not offer, on-failure for instance. Shown so
-				     the control does not misreport it, and not selectable. */}}
-				<option value="" selected disabled>{{.Policy}}</option>
-				{{end}}
-			</select>
+
+			{{/* A select is as wide as its longest option whatever is selected, so with
+			     "always" chosen there was a hand's width of nothing between the word and
+			     the arrow — on every card on the page, and wide enough to push the
+			     actions onto a line of their own.
+			     So the value is written out here as text, which is what gives the control
+			     its width, and the real select lies on top of it with no width of its
+			     own: every bit of native behaviour, from the keyboard to the wheel a
+			     phone puts up, and none of its geometry. app.js keeps the text in step
+			     when you change it; after the next refresh the server has rendered it
+			     anyway. */}}
+			<span class="policy__control">
+				<span class="policy__text" aria-hidden="true">{{.PolicyLabel}}</span>
+				<svg class="policy__caret" viewBox="0 0 10 6" fill="none" stroke="currentColor"
+				     stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"
+				     aria-hidden="true"><path d="M1 1.2 5 4.8 9 1.2"/></svg>
+				<select class="policy__select" id="policy-{{.ShortID}}" name="policy"
+				        title="When Docker starts this container by itself.{{with .PolicyFile}} Set restart: in {{.}} too, or the next rebuild from compose overwrites it.{{end}}">
+					<option value="no"{{if .PolicyIs "no"}} selected{{end}}>never</option>
+					<option value="unless-stopped"{{if .PolicyIs "unless-stopped"}} selected{{end}}>unless stopped</option>
+					<option value="always"{{if .PolicyIs "always"}} selected{{end}}>always</option>
+					{{if not (or (.PolicyIs "no") (.PolicyIs "unless-stopped") (.PolicyIs "always"))}}
+					{{/* A policy docKontroler does not offer, on-failure for instance. Shown so
+					     the control does not misreport it, and not selectable. */}}
+					<option value="" selected disabled>{{.Policy}}</option>
+					{{end}}
+				</select>
+			</span>
+
 			<noscript><button type="submit" class="btn btn--quiet btn--slim">Set</button></noscript>
 		</form>
 

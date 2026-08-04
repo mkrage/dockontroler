@@ -927,9 +927,11 @@ a.port:hover {
 }
 
 /* One size for all three, filled or not, so the row reads as one control group
-   rather than three that happened to end up next to each other. */
+   rather than three that happened to end up next to each other. Tight, because these
+   three plus the autostart control have to share the width of the narrowest card in
+   the grid without the row breaking in two. */
 .row__actions .btn {
-	padding: 0.28rem 0.5rem;
+	padding: 0.28rem 0.45rem;
 	font-size: 0.8rem;
 }
 
@@ -948,41 +950,78 @@ a.port:hover {
 	min-width: 0;
 }
 
+/* Sentence case, unlike the section heading further down, which is set as a label in
+   capitals. This one is not a heading over anything: it is the left half of a
+   sentence whose right half is the value, and it has to be narrow enough that the
+   actions still fit beside it on the narrowest card in the grid. */
 .policy__label {
 	flex: none;
 	color: var(--text-faint);
-	font-size: 0.66rem;
-	font-weight: 600;
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
+	font-size: 0.72rem;
+	font-weight: 500;
 }
 
-/* Capped at what the longest of the three values needs, so the actions beside it stay
-   on the same line on a card at the grid's narrowest. */
-.policy__select {
+/* What you see and click: the value, a caret, and no more room than those two need.
+   The select itself is inside it, exactly on top and invisible — see the template for
+   why the width comes from the text rather than from the control. */
+.policy__control {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
 	min-width: 0;
-	max-width: 7.5rem;
-	padding: 0.1rem 0.15rem;
+	max-width: 9rem;
+	padding: 0.12rem 0.3rem;
 	border: 1px solid transparent;
 	border-radius: var(--radius-xs);
-	background: transparent;
 	color: var(--text-dim);
-	font: inherit;
 	font-size: 0.76rem;
 	cursor: pointer;
 	transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
 }
 
-.policy__select:hover {
+.policy__control:hover {
 	border-color: var(--border);
 	background: var(--surface-alt);
 	color: var(--text);
 }
 
-.policy__select:focus-visible {
+/* On the box, not on the select: the select has no visible edge to draw a ring
+   around, and this is the thing that looks like the control. */
+.policy__control:focus-within {
 	outline: 2px solid var(--accent);
 	outline-offset: 1px;
 	color: var(--text);
+}
+
+.policy__text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.policy__caret {
+	flex: none;
+	width: 8px;
+	height: 8px;
+	opacity: 0.75;
+}
+
+/* Invisible rather than display: none — it is still the control that is focused,
+   opened and read out, it just contributes nothing to the layout. */
+.policy__select {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: none;
+	font: inherit;
+	color: inherit;
+	opacity: 0;
+	appearance: none;
+	cursor: pointer;
 }
 
 /* ---------- buttons ---------- */
@@ -1038,19 +1077,23 @@ a.port:hover {
 	border-color: color-mix(in srgb, var(--accent) 88%, var(--text));
 }
 
-/* No frame until it is pointed at. This is what the actions on a card and on a
-   stack chip are: on a page of thirty cards, four outlined controls each turned the
-   interface into its own subject. */
+/* What the actions on a card and on a stack chip are. Quieter than a full button —
+   a filled shape on the card's own surface, with an edge barely there — because on a
+   page of thirty cards, four outlined controls each turned the interface into its own
+   subject. But a shape, not bare text: a verb with nothing around it does not say
+   that clicking it does something, and these are the things you came to click.
+   Hover deepens the fill in whichever direction the theme needs, so the response is
+   the same in both: darker on white, lighter on the dark surface. */
 .btn--quiet {
 	padding: 0.28rem 0.45rem;
-	border-color: transparent;
-	background: transparent;
+	border-color: var(--hairline);
+	background: var(--surface-alt);
 	color: var(--text-dim);
 	font-size: 0.8rem;
 }
 
 .btn--quiet:hover:not(:disabled) {
-	background: var(--surface-alt);
+	background: color-mix(in srgb, var(--surface-alt) 88%, var(--text));
 	border-color: var(--border);
 	color: var(--text);
 }

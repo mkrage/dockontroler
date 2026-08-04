@@ -144,11 +144,21 @@ names is not, and nothing depends on seeing it: the status text says the same th
 in Docker's own words, and it takes the state's colour where the state is not the
 ordinary one, so a host where everything is up stays quiet.
 
-The controls are deliberately the quietest thing on a card. They carry no frame until
-you point at one, and `Stop` only turns red under the cursor: four framed controls on
-each of thirty cards made a page about its own buttons rather than about the host. The
-one exception is `Start` on a container that is down, which is the only filled button
-on the page — there is nothing else to do to a stopped container.
+The controls sit at the foot of the card, under a rule and quieter than everything
+above them: a filled shape on the card's own surface with an edge barely there, rather
+than a full button each — thirty cards with four outlined controls apiece made a page
+about its own buttons rather than about the host. Quieter, but still visibly a button,
+because a bare verb does not say that clicking it does anything. `Stop` turns red
+under the cursor and not before, so no card shouts a warning at rest. The one filled
+button on the page is `Start` on a container that is down, because there is nothing
+else to do to a stopped container.
+
+The autostart setting is the exception that is *not* a button, because it is a value
+rather than an action: the current one written out, with a caret. A `<select>` is as
+wide as its longest option no matter which is chosen, so `always` left a hand's width
+of nothing before the arrow and pushed the actions onto a second line; the value you
+see is text that sets the width, and the real control lies on top of it, invisible and
+still doing everything a native select does.
 
 **The strip above the grid is the host at a glance**: one cell per container in the
 colour of its state, next to the count. `26 of 33` does not say whether the other

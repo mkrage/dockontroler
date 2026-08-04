@@ -62,6 +62,24 @@ type Container struct {
 // Templates call this to highlight the active button.
 func (c Container) PolicyIs(policy string) bool { return c.Policy == policy }
 
+// PolicyLabel is the current restart policy in the same words the control offers for
+// it, and "on-failure" or anything else docKontroler does not offer verbatim.
+//
+// The overview writes it out beside the select as well, because a select is as wide
+// as its longest option whatever is selected — see the template.
+func (c Container) PolicyLabel() string {
+	switch c.Policy {
+	case docker.PolicyNo:
+		return "never"
+	case docker.PolicyUnlessStopped:
+		return "unless stopped"
+	case docker.PolicyAlways:
+		return "always"
+	default:
+		return c.Policy
+	}
+}
+
 // PolicyFile is the compose file to edit so that a restart policy set here survives
 // the container being rebuilt from its yaml. Empty when Compose was not involved.
 //
