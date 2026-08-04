@@ -146,7 +146,9 @@ func renderContainer(container manager.Container) (string, *InlineKeyboardMarkup
 	if file := container.PolicyFile(); file != "" {
 		fmt.Fprintf(&text, "compose: <code>%s</code>\n", esc(file))
 	}
-	if container.Note != "" {
+	// Not for docKontroler's own container, whose note says what the warning below
+	// says next, at more length and with the consequence spelled out.
+	if container.Note != "" && !container.IsSelf {
 		fmt.Fprintf(&text, "\n<i>%s</i>\n", esc(container.Note))
 	}
 	if container.IsSelf {

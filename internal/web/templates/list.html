@@ -150,7 +150,12 @@
 	</div>
 	{{end}}
 
-	{{with .Note}}<p class="hint row__note">{{.}}</p>{{end}}
+	{{/* Not on docKontroler's own card, where the note only says what the tag beside the
+	     name already does. A line of prose there costs every card in the same grid row
+	     the same height, so it was the one note on the page that was paid for by cards
+	     it had nothing to do with. The reason still reaches the disabled Recreate
+	     button's tooltip, which is the one place it is an answer to a question. */}}
+	{{if and .Note (not .IsSelf)}}<p class="hint row__note">{{.Note}}</p>{{end}}
 
 	{{/* Everything you can do to this container, on one line at the foot of the card:
 	     what Docker should do with it by itself on the left, what you are doing to it
