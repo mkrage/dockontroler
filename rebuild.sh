@@ -13,7 +13,24 @@ cd "$(dirname "$0")"
 # git, or without tags, it stays "dev" rather than failing the build.
 VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo dev)"
 
-docker build --build-arg "VERSION=${VERSION}" -t dockontroler:latest .
+# BuildKit knows which platform it is building on and for; the legacy builder does
+# not, and leaves BUILDPLATFORM/TARGETOS/TARGETARCH empty — which the Dockerfile
+# cannot recover from on its own. So without buildx the host's own platform is
+# passed in, i.e. a native build, which is all the legacy builder can do anyway.
+# For an arm64 image on an amd64 machine you need buildx:
+#   docker buildx build --platform linux/arm64 --load -t dockontroler:latest .
+if docker buildx version >/dev/null 2>&1; then
+	docker buildx build --load --build-arg "VERSION=${VERSION}" -t dockontroler:latest .
+else
+	OS="$(docker version --format '{{.Server.Os}}')"
+	ARCH="$(docker version --format '{{.Server.Arch}}')"
+	docker build \
+		--build-arg "BUILDPLATFORM=${OS}/${ARCH}" \
+		--build-arg "TARGETOS=${OS}" \
+		--build-arg "TARGETARCH=${ARCH}" \
+		--build-arg "VERSION=${VERSION}" \
+		-t dockontroler:latest .
+fi
 
 # Only after the build succeeded: a broken build must not take the running
 # container down with it. On a first build there is nothing here to remove yet,

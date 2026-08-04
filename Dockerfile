@@ -6,6 +6,11 @@
 #
 # The golang:1-alpine tag floats to the current Go 1.x. Pin it to a concrete
 # version once you have a build you are happy with, so the image is reproducible.
+#
+# BuildKit fills BUILDPLATFORM (and TARGETOS/TARGETARCH below) in on its own. The
+# legacy builder leaves them empty, and an empty --platform is a parse error rather
+# than a default, so it is declared here for rebuild.sh to pass in explicitly.
+ARG BUILDPLATFORM
 FROM --platform=$BUILDPLATFORM golang:1-alpine AS build
 
 WORKDIR /src

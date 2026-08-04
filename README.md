@@ -44,7 +44,10 @@ cp docker-compose.example.yml docker-compose.yml
 ```
 
 `rebuild.sh` builds `dockontroler:latest`, stamps the version into the binary, and
-removes any container from a previous build. Edit the `ports:` line to your server's
+removes any container from a previous build. It uses `docker buildx` when it is
+installed and the legacy builder otherwise; the legacy builder can only produce an
+image for the host's own architecture, so cross-building for a Raspberry Pi from an
+amd64 machine needs buildx. Edit the `ports:` line to your server's
 LAN address — **do not** leave it on `0.0.0.0`, see [Security](#security). Then:
 
 ```bash
