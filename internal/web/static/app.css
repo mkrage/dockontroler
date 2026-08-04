@@ -66,6 +66,13 @@
 	box-sizing: border-box;
 }
 
+/* The browser's own [hidden] rule is display: none, and an author rule beats it — so
+   the cards and chips below, which are display: flex, would ignore the attribute
+   entirely. That is what the filter hides things with, so it has to win here. */
+[hidden] {
+	display: none !important;
+}
+
 body {
 	margin: 0;
 	background: var(--bg);
@@ -84,11 +91,14 @@ code {
 
 /* ---------- top bar ---------- */
 
+/* Wraps, because the right-hand side now holds a filter box as well: on a phone the
+   actions drop onto a second line instead of squeezing the wordmark out of shape. */
 .topbar {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	justify-content: space-between;
-	gap: 1rem;
+	gap: 0.5rem 1rem;
 	padding: 0.85rem 1.25rem;
 	background: var(--surface);
 	border-bottom: 1px solid var(--border);
@@ -144,8 +154,33 @@ code {
 
 .topbar__actions {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
-	gap: 0.75rem;
+	justify-content: flex-end;
+	gap: 0.5rem 0.75rem;
+}
+
+/* Top right, where a search box is looked for. It shrinks before anything beside it
+   does and stops at a width that still shows what was typed. */
+.filter {
+	flex: 0 1 12rem;
+	min-width: 7rem;
+	padding: 0.28rem 0.55rem;
+	border: 1px solid var(--border-strong);
+	border-radius: 5px;
+	background: var(--surface);
+	color: var(--text);
+	font: inherit;
+	font-size: 0.85rem;
+}
+
+.filter::placeholder {
+	color: var(--text-dim);
+}
+
+.filter:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 1px;
 }
 
 .topbar__stamp {
@@ -269,16 +304,29 @@ code {
    the order the projects are listed. Only the hue is stored per slot: the two themes
    need very different lightness against white and against #1e2227, and one variable
    beats keeping two palettes in step.
-   Cool hues plus pink and magenta, deliberately — green, amber and red are the
-   container state on the left edge of every card, and a project colour borrowing one
-   of them would read as a state. Consecutive slots are the furthest apart, because
-   what a colour has to tell apart is the project next to it in the grid. */
-.pc0 { --project-hue: 265; }
-.pc1 { --project-hue: 195; }
-.pc2 { --project-hue: 330; }
-.pc3 { --project-hue: 225; }
-.pc4 { --project-hue: 300; }
-.pc5 { --project-hue: 155; }
+   Three constraints decide the numbers, in this order.
+   Nothing from the arc that runs from red through amber to green (roughly 345 round
+   through 0 to 165): those three are the container state on the left edge of every
+   card, and a project colour borrowing one would read as a state. What is left is
+   cyan through blue and violet to pink - 188 to 336, and every slot lives in there.
+   Eight of them, not six, because the slots wrap: with six, a host running seven
+   stacks gives its first and its last the same colour, side by side in the same strip.
+   Eight is what fits at a distance worth having; a ninth stack starts over at pc0.
+   And the order is not the hue order. Consecutive slots go to projects that end up
+   next to each other, so each jumps about a third of the way along the arc from the
+   last: no two neighbours are closer than 64 degrees, where sorting by hue would put
+   them 20 apart and make the four blues in the middle indistinguishable. The wrap from
+   pc7 back to pc0 is the widest gap of all, 148, so the seam is the least visible
+   place for the repeat to happen - and pink, the one slot near a reserved hue, is
+   last, so it is only reached on a host with eight stacks. */
+.pc0 { --project-hue: 188; } /* cyan */
+.pc1 { --project-hue: 282; } /* violet */
+.pc2 { --project-hue: 212; } /* sky blue */
+.pc3 { --project-hue: 304; } /* purple */
+.pc4 { --project-hue: 236; } /* blue */
+.pc5 { --project-hue: 324; } /* magenta */
+.pc6 { --project-hue: 260; } /* indigo */
+.pc7 { --project-hue: 336; } /* pink */
 
 .row--stacked,
 .stack {

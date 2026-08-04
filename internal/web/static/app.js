@@ -16,6 +16,7 @@
 	var pulse = document.getElementById("pulse");
 	var stamp = document.getElementById("stamp");
 	var refreshButton = document.getElementById("refresh-now");
+	var filterBox = document.getElementById("filter");
 	var refreshMillis = Number(document.body.dataset.refreshMillis) || 0;
 
 	if (!containers) {
@@ -72,6 +73,68 @@
 		}
 	}
 
+	// Hides everything that does not match what is in the filter box.
+	//
+	// It works on the rendered list rather than asking the server for a filtered one:
+	// the list is already here, and a box that answers between keystrokes is the whole
+	// point. Which also means it has to run again after every refresh, since the markup
+	// it hides is thrown away and replaced.
+	//
+	// Words are matched independently, so "blog db" finds the database of the blog
+	// stack without depending on the order the card happens to name them in.
+	function applyFilter() {
+		var query = filterBox ? filterBox.value.trim().toLowerCase() : "";
+		var terms = query.split(/\s+/).filter(Boolean);
+
+		function matches(haystack) {
+			return terms.every(function (term) {
+				return haystack.indexOf(term) >= 0;
+			});
+		}
+
+		// Which projects still have a card on screen. An empty query leaves terms empty,
+		// every() is then vacuously true, and nothing is hidden at all.
+		var projectsShown = {};
+		var shown = 0;
+		var cards = containers.querySelectorAll(".row");
+		for (var i = 0; i < cards.length; i++) {
+			var card = cards[i];
+			var hit = matches(card.dataset.search || "");
+			card.hidden = !hit;
+			if (hit) {
+				shown++;
+				if (card.dataset.project) {
+					projectsShown[card.dataset.project] = true;
+				}
+			}
+		}
+
+		// A chip stays as long as one of its containers is still shown, or its own name
+		// matches: the point of finding a service is often to act on the stack around it,
+		// and the control for that must not vanish just as you found it.
+		var chips = containers.querySelectorAll(".stack");
+		for (var j = 0; j < chips.length; j++) {
+			var project = chips[j].dataset.project || "";
+			chips[j].hidden = terms.length > 0 &&
+				!projectsShown[project] && !matches(project.toLowerCase());
+		}
+
+		// A list, a section or the strip with nothing left in it goes as well, or the
+		// page keeps their headings and gaps around nothing.
+		var groups = containers.querySelectorAll(".stacks, .rows, .stopped");
+		for (var k = 0; k < groups.length; k++) {
+			groups[k].hidden = !groups[k].querySelector(".row:not([hidden]), .stack:not([hidden])");
+		}
+
+		var nothing = containers.querySelector("#no-matches");
+		if (nothing) {
+			nothing.hidden = !(terms.length > 0 && shown === 0);
+			if (!nothing.hidden) {
+				nothing.textContent = "No container matches “" + query + "”.";
+			}
+		}
+	}
+
 	function refresh(force) {
 		if (!force && (inFlight > 0 || document.hidden)) {
 			return Promise.resolve();
@@ -109,6 +172,8 @@
 				var wasOpen = stoppedIsOpen();
 				containers.innerHTML = signature;
 				setStoppedOpen(wasOpen);
+				// The markup arrives unfiltered — the server knows nothing about the box.
+				applyFilter();
 				lastSignature = signature;
 			}
 			blinkPulse();
@@ -194,6 +259,40 @@
 		});
 	}
 
+	if (filterBox) {
+		// Only now does the box exist as far as the user is concerned; see the template
+		// for why it is rendered hidden.
+		filterBox.hidden = false;
+		filterBox.addEventListener("input", applyFilter);
+		// A type=search field fires this on its own clear button and on Escape in some
+		// browsers, and nothing at all in others — hence both this and the key below.
+		filterBox.addEventListener("search", applyFilter);
+		filterBox.addEventListener("keydown", function (event) {
+			if (event.key === "Escape" && filterBox.value !== "") {
+				// Clear before the browser's own Escape handling can, so the list comes
+				// back rather than the field quietly keeping a value nobody can see.
+				event.preventDefault();
+				filterBox.value = "";
+				applyFilter();
+			}
+		});
+
+		// "/" jumps to the box, as in most tools that have one. Ignored while typing
+		// somewhere else, so it cannot eat the slash in a path.
+		document.addEventListener("keydown", function (event) {
+			if (event.key !== "/" || event.ctrlKey || event.metaKey || event.altKey) {
+				return;
+			}
+			var focused = document.activeElement;
+			if (focused && /^(INPUT|SELECT|TEXTAREA)$/.test(focused.tagName)) {
+				return;
+			}
+			event.preventDefault();
+			filterBox.focus();
+			filterBox.select();
+		});
+	}
+
 	// Catch up immediately when the tab comes back, rather than waiting out the
 	// interval that was skipped while it was hidden.
 	document.addEventListener("visibilitychange", function () {
@@ -215,6 +314,11 @@
 		}
 		lastSignature = current.innerHTML;
 	})();
+
+	// After priming, not before: the signature has to be the unfiltered markup the
+	// server sent, or every poll would look like a change. This matters when a browser
+	// restores what was typed in the box across a reload.
+	applyFilter();
 
 	if (refreshMillis >= 1000) {
 		window.setInterval(function () {

@@ -81,14 +81,24 @@
 	</ul>
 </details>
 {{end}}
+
+{{/* Filled in and unhidden by app.js when the filter matches nothing. It is rendered
+     here, hidden, rather than created in the browser: the fragment refresh replaces
+     everything in this element, and markup that only exists in JavaScript would have
+     to be rebuilt every few seconds. */}}
+<p class="empty" id="no-matches" hidden></p>
 {{end}}
 
 {{/* One container. The state is the left edge, the name and its port are what the
      eye should land on, and the controls are deliberately quieter than both. */}}
 {{define "card"}}
 {{$host := .Host}}
+{{/* data-search is what the filter box matches against, and data-project is how a
+     match keeps the chip for the stack it belongs to. Both are here rather than read
+     out of the rendered card, which would match the words on its own buttons. */}}
 <li class="row row--{{.StateClass}}{{if .IsSelf}} row--self{{end}}{{with .ProjectClass}} row--stacked {{.}}{{end}}"
-    data-id="{{.ID}}" data-name="{{.Name}}">
+    data-id="{{.ID}}" data-name="{{.Name}}"
+    data-project="{{.ComposeProject}}" data-search="{{.SearchText}}">
 	<div class="row__head">
 		<span class="row__name" title="{{.Name}}">
 			{{if .ComposeService}}{{.ComposeService}}{{else}}{{.Name}}{{end}}

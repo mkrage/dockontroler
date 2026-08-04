@@ -26,6 +26,14 @@
 				class="wm-ctrl">ontrol</span><span class="wm-outer">er</span></span>
 		</h1>
 		<div class="topbar__actions">
+			<!-- Outside the container list on purpose: what you have typed has to survive
+			     the list being swapped out under it every few seconds.
+			     Hidden until app.js unhides it. Filtering happens in the browser, on a
+			     list that is already there, so without JavaScript this box could not do
+			     anything and is better not offered. -->
+			<input type="search" class="filter" id="filter" hidden
+			       placeholder="Filter…" aria-label="Filter containers and stacks"
+			       autocomplete="off" spellcheck="false">
 			<!-- Filled in by app.js from the refreshed fragment; stays empty
 			     without JavaScript, where the list carries its own timestamp. -->
 			<span class="topbar__stamp" id="stamp"></span>

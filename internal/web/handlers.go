@@ -51,6 +51,22 @@ type card struct {
 	ProjectClass string
 }
 
+// SearchText is the haystack the filter box matches against: every word about this
+// container somebody might plausibly type to find it.
+//
+// Assembled here rather than scraped from the rendered card in the browser, which
+// would match the words on its own buttons — "stop" would find every container on the
+// host. Lowercased here too, so the browser is not doing it for thirty cards on every
+// keystroke.
+func (c card) SearchText() string {
+	parts := []string{c.Name, c.ComposeProject, c.ComposeService, c.Image}
+	for _, port := range c.Ports {
+		// "which container was on 8080 again" is a question this answers.
+		parts = append(parts, port.Label())
+	}
+	return strings.ToLower(strings.Join(parts, " "))
+}
+
 // ShowProject decides whether the sub line names the Compose project. It is left
 // out when the name would only repeat the service name above it — except on a card
 // that carries a project colour, where the name is what explains the colour.
@@ -73,10 +89,13 @@ type stack struct {
 	HasSelf bool
 }
 
-// projectColours is how many colour slots app.css defines. Slots are reused beyond
-// that, which is fine: what a colour has to tell apart is neighbours in the grid,
-// not every project on the host at once.
-const projectColours = 6
+// projectColours is how many colour slots app.css defines — and it has to stay in
+// step with it, which is what TestProjectColoursMatchTheStylesheet is for.
+//
+// Eight, because the slots wrap: with six, a host running seven stacks gave its first
+// and its last the same colour, side by side in the same strip. Beyond eight it wraps
+// again; there is no hue left that is not already the meaning of a container state.
+const projectColours = 8
 
 // Active and Stopped split the overview into the grid you look at and the section
 // below it.

@@ -2,6 +2,7 @@ package web
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -286,6 +287,15 @@ func TestIndexRendersTheContainerList(t *testing.T) {
 	if !strings.Contains(body, "/data/compose/7/docker-compose.yml") {
 		t.Error("the row does not name the compose file the policy has to be written into")
 	}
+
+	// The filter box lives in the topbar, and app.js matches against the haystack the
+	// card carries rather than its rendered text.
+	if !strings.Contains(body, `id="filter"`) {
+		t.Error("the page has no filter box")
+	}
+	if !strings.Contains(body, `data-search="blog-web-1 blog web ghcr.io/me/blog:latest`) {
+		t.Errorf("the card carries no searchable text:\n%s", body)
+	}
 }
 
 // TestIndexShowsPortsAndLinksThem covers the point of showing ports at all: being
@@ -433,6 +443,81 @@ func TestSingleContainerProjectIsNoStack(t *testing.T) {
 	}
 	if stacks[0].Total != 2 || stacks[0].Active != 0 {
 		t.Errorf("stack = %+v, want 2 containers, none of them active", stacks[0])
+	}
+}
+
+// TestProjectColoursMatchTheStylesheet: Go hands out pcN classes and app.css defines
+// them, and nothing but this test connects the two. A stack whose slot has no rule
+// would silently come out with no colour at all.
+func TestProjectColoursMatchTheStylesheet(t *testing.T) {
+	css, err := staticFS.ReadFile("static/app.css")
+	if err != nil {
+		t.Fatalf("read app.css: %v", err)
+	}
+	stylesheet := string(css)
+
+	for slot := 0; slot < projectColours; slot++ {
+		if !strings.Contains(stylesheet, fmt.Sprintf(".pc%d {", slot)) {
+			t.Errorf(".pc%d is handed out but app.css does not define it", slot)
+		}
+	}
+	if strings.Contains(stylesheet, fmt.Sprintf(".pc%d {", projectColours)) {
+		t.Errorf(".pc%d is defined in app.css but never handed out", projectColours)
+	}
+}
+
+// TestProjectColoursOnlyRepeatOnceExhausted: the slots wrap, and with six of them a
+// host running seven stacks gave its first and its last the same colour, next to each
+// other in the same strip. There is no palette that never repeats — this pins down
+// where it starts to.
+func TestProjectColoursOnlyRepeatOnceExhausted(t *testing.T) {
+	var groups []manager.Group
+	for i := 0; i <= projectColours; i++ {
+		project := fmt.Sprintf("p%02d", i)
+		groups = append(groups, manager.Group{
+			Project:    project,
+			Containers: []manager.Container{{Name: project + "-a"}, {Name: project + "-b"}},
+		})
+	}
+
+	classes := projectClasses(groups)
+	distinct := map[string]int{}
+	for _, class := range classes {
+		distinct[class]++
+	}
+	if len(distinct) != projectColours {
+		t.Errorf("%d distinct colours for %d stacks, want all %d slots used",
+			len(distinct), len(groups), projectColours)
+	}
+
+	first, wrapped := classes["p00"], classes[fmt.Sprintf("p%02d", projectColours)]
+	if first != wrapped {
+		t.Errorf("the %dth stack got %q, want it back at %q where the slots start over",
+			projectColours+1, wrapped, first)
+	}
+}
+
+// TestSearchTextCoversWhatSomebodyWouldType: the filter matches this string and
+// nothing else, so what is missing from it cannot be searched for.
+func TestSearchTextCoversWhatSomebodyWouldType(t *testing.T) {
+	subject := card{Container: manager.Container{
+		Name:           "blog-web-1",
+		ComposeProject: "blog",
+		ComposeService: "web",
+		Image:          "ghcr.io/me/Blog:latest",
+		Ports:          []manager.PortMapping{{HostPort: 8080, ContainerPort: 80, Protocol: "tcp"}},
+	}}
+
+	haystack := subject.SearchText()
+	for _, term := range []string{"blog-web-1", "blog", "web", "ghcr.io/me/blog:latest", "8080"} {
+		if !strings.Contains(haystack, term) {
+			t.Errorf("SearchText() = %q, missing %q", haystack, term)
+		}
+	}
+	// Lowercased once here rather than on every keystroke in the browser, so a capital
+	// in an image reference must not survive.
+	if strings.Contains(haystack, "Blog") {
+		t.Errorf("SearchText() = %q, want it lowercased", haystack)
 	}
 }
 

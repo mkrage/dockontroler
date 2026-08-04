@@ -20,6 +20,8 @@
 - **Start, stop and restart** with one click.
 - **Start or stop a whole stack**, in the order its `depends_on` asks for, because
   that is usually what you actually want.
+- **A filter box** for the host where thirty containers do not fit on a screen. Type
+  a name, a service, an image or a port number.
 - **Choose when a container starts again** — never, unless you stopped it, or always.
 - **Recreate** a container so it picks up a rebuilt image. This is the thing a
   restart cannot do, and the reason this project exists.
@@ -159,6 +161,12 @@ container, its cards share a colour on their top edge** — the edge the state d
 use. A project with a single container gets none: it *is* that container, and a colour
 tying a card to itself says nothing.
 
+There are eight of those colours, all of them between cyan and pink. Nothing from the
+green-amber-red arc, because those three *are* the container state on the left edge and
+a project borrowing one would read as a state; and consecutive colours jump about a
+third of the way around what is left, because what a colour has to tell apart is the
+project next to it. Eight is not infinite: a ninth stack starts the palette over.
+
 **Stacks are started and stopped as a whole** from the strip above the grid, one chip
 per multi-container project, in that project's colour — so the colours have a legend
 rather than needing one. A stack is the unit you deploy, and its containers are rarely
@@ -173,6 +181,17 @@ The order comes from a label Compose writes onto the containers themselves, so n
 here reads your yaml. Containers created by Compose v1 do not have it and fall back to
 service-name order. Nor is it a `compose up`: **nothing is created or removed**, only
 started and stopped, and a service scaled to zero stays at zero.
+
+**The filter box** in the top right narrows the page as you type — container name,
+Compose project, service, image or port number, and several words at once (`blog db`)
+match in any order. A stack's chip stays as long as one of its containers is still
+shown, so the control does not disappear just as you found what it belongs to. `/`
+jumps to the box, `Escape` clears it.
+
+It filters in the browser, on a list that is already there, which is why it answers
+between keystrokes and why it is not offered at all without JavaScript. The counts
+above the grid keep describing the host rather than the filtered view: they answer
+"what is running here", which is not a question the filter changes.
 
 **Ports** are the host ports, with the container port after an arrow when the two
 differ (`8080 → 80`). A tcp port on a running container is a link, and it is built
