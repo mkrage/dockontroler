@@ -263,6 +263,87 @@ code {
 	border-radius: var(--radius);
 }
 
+/* ---------- project colours ---------- */
+
+/* One slot per Compose project that holds more than one container, handed out in
+   the order the projects are listed. Only the hue is stored per slot: the two themes
+   need very different lightness against white and against #1e2227, and one variable
+   beats keeping two palettes in step.
+   Cool hues plus pink and magenta, deliberately — green, amber and red are the
+   container state on the left edge of every card, and a project colour borrowing one
+   of them would read as a state. Consecutive slots are the furthest apart, because
+   what a colour has to tell apart is the project next to it in the grid. */
+.pc0 { --project-hue: 265; }
+.pc1 { --project-hue: 195; }
+.pc2 { --project-hue: 330; }
+.pc3 { --project-hue: 225; }
+.pc4 { --project-hue: 300; }
+.pc5 { --project-hue: 155; }
+
+.row--stacked,
+.stack {
+	--project: hsl(var(--project-hue) 58% 40%);
+}
+
+@media (prefers-color-scheme: dark) {
+	.row--stacked,
+	.stack {
+		--project: hsl(var(--project-hue) 60% 66%);
+	}
+}
+
+/* ---------- the stacks strip ---------- */
+
+/* Above the grid rather than as a heading over each project: this is the one place a
+   whole stack is started or stopped, and being one strip means it costs two lines
+   instead of a row per project. It doubles as the legend for the colours below it. */
+.stacks {
+	list-style: none;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+	margin: 0 0 1rem;
+	padding: 0;
+}
+
+.stack {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	min-width: 0;
+	padding: 0.25rem 0.5rem;
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-left: 3px solid var(--project);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+	font-size: 0.8rem;
+}
+
+.stack.is-busy {
+	opacity: 0.55;
+	pointer-events: none;
+}
+
+.stack__name {
+	max-width: 14rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--project);
+	font-weight: 650;
+}
+
+.stack__count {
+	flex: none;
+	color: var(--text-dim);
+	font-variant-numeric: tabular-nums;
+}
+
+.stack form {
+	margin: 0;
+}
+
 /* ---------- the grid of containers ---------- */
 
 /* Where the layout adapts to the screen. Each container is a self-contained card;
@@ -323,11 +404,25 @@ code {
 	border-left-color: var(--error);
 }
 
-/* Set after the state colours so it can only claim the other three edges. */
+/* The stack this card belongs to, on the edge the state does not use. Cards of one
+   project are already next to each other because that is how they are sorted; this is
+   what makes that visible in a grid with no headings to cut it into sections. Only
+   projects with more than one container get one — a colour tying a card to itself
+   would say nothing. */
+.row--stacked {
+	border-top: 3px solid var(--project);
+}
+
+/* Set after the state colour so it can only claim the other three edges — and it
+   gives the top one back to a stack colour, which says something this does not: there
+   is exactly one card that is docKontroler, and its own controls already say so. */
 .row--self {
-	border-top-color: var(--accent);
 	border-right-color: var(--accent);
 	border-bottom-color: var(--accent);
+}
+
+.row--self:not(.row--stacked) {
+	border-top-color: var(--accent);
 }
 
 .row.is-busy {
@@ -366,14 +461,15 @@ code {
 
 /* The Compose project this container belongs to. It replaces the per-project
    heading the list used to be cut into: kept out of the shrinking, because it is
-   the one word that says which stack a card belongs to. */
+   the one word that says which stack a card belongs to. In the stack's own colour
+   where it has one, so the name and the top edge are visibly the same fact. */
 .row__project {
 	flex: none;
 	max-width: 45%;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	color: var(--text);
+	color: var(--project, var(--text));
 	font-weight: 600;
 }
 
@@ -590,8 +686,8 @@ a.port:hover {
 
 /* ---------- what is not running ---------- */
 
-/* Folded away by default: on a host where six of thirty-three containers are
-   stopped on purpose, they are what you go looking for, not what you watch. */
+/* Below the live host, not hidden from it: a stopped container is still part of what
+   is on this machine, so the section starts open and only the fold is optional. */
 .stopped {
 	margin-top: 1.5rem;
 }

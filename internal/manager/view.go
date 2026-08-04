@@ -79,8 +79,12 @@ func (c Container) PolicyFile() string {
 // Restarting counts as active on purpose: a container in a crash loop is not
 // resting, it is the one thing on the page that wants attention. What is left is
 // everything that is not going to do anything until somebody starts it.
-func (c Container) Active() bool {
-	switch c.State {
+func (c Container) Active() bool { return isActiveState(c.State) }
+
+// isActiveState is the same question asked of a bare state string, which is all a
+// stack operation has to go on.
+func isActiveState(state string) bool {
+	switch state {
 	case docker.StateRunning, docker.StatePaused, docker.StateRestarting:
 		return true
 	default:
@@ -121,6 +125,37 @@ func (c Container) StateIcon() string {
 type Group struct {
 	Project    string
 	Containers []Container
+}
+
+// Stack reports whether this group is a stack worth treating as one: a Compose
+// project holding more than one container.
+//
+// A project with a single container *is* that container — a stack control beside
+// it would only repeat the buttons the card already has, and a colour tying it to
+// itself says nothing. The containers with no project at all are not a stack in any
+// sense; they only share the absence of one.
+func (g Group) Stack() bool { return g.Project != "" && len(g.Containers) > 1 }
+
+// ActiveCount is how many of the group's containers are up or on their way.
+func (g Group) ActiveCount() int {
+	count := 0
+	for _, container := range g.Containers {
+		if container.Active() {
+			count++
+		}
+	}
+	return count
+}
+
+// HasSelf reports whether docKontroler itself is part of this group, which is why
+// stopping the whole stack will leave one container behind.
+func (g Group) HasSelf() bool {
+	for _, container := range g.Containers {
+		if container.IsSelf {
+			return true
+		}
+	}
+	return false
 }
 
 // Overview is everything the container list page renders.

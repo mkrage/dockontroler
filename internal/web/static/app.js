@@ -56,14 +56,18 @@
 		}, 300);
 	}
 
+	// null when there is no such section, which is not the same as a folded one: a
+	// section that has just appeared — the first container to stop — has to keep the
+	// state the server rendered it with instead of inheriting "folded" from its own
+	// absence a moment ago.
 	function stoppedIsOpen() {
 		var section = containers.querySelector(".stopped");
-		return !!section && section.open;
+		return section ? section.open : null;
 	}
 
 	function setStoppedOpen(open) {
 		var section = containers.querySelector(".stopped");
-		if (section) {
+		if (section && open !== null) {
 			section.open = open;
 		}
 	}
@@ -98,10 +102,10 @@
 
 			var signature = incoming.innerHTML;
 			if (signature !== lastSignature) {
-				// The refreshed markup always arrives with the "not running" section
-				// folded, so reinserting it would slam it shut under a user who is
-				// reading it. Comparing incoming markup against incoming markup means
-				// this survives every later poll too.
+				// The refreshed markup arrives with the "not running" section in the
+				// state the server renders it in, so reinserting it would undo a fold
+				// the user just made. Comparing incoming markup against incoming markup
+				// means this survives every later poll too.
 				var wasOpen = stoppedIsOpen();
 				containers.innerHTML = signature;
 				setStoppedOpen(wasOpen);
@@ -136,10 +140,14 @@
 			body.append(submitter.name, submitter.value);
 		}
 
-		var row = form.closest(".row");
+		// The card for a container action, the chip for a stack one: whichever it is,
+		// it greys out until the answer comes back. A stack stop is the slowest thing
+		// here — it walks its containers one at a time — so having something to look at
+		// matters more there than anywhere else.
+		var busy = form.closest(".row, .stack");
 		inFlight++;
-		if (row) {
-			row.classList.add("is-busy");
+		if (busy) {
+			busy.classList.add("is-busy");
 		}
 
 		fetch(form.action, {
@@ -157,8 +165,8 @@
 			showToast("error", "Could not reach docKontroler: " + error.message);
 		}).then(function () {
 			inFlight--;
-			if (row) {
-				row.classList.remove("is-busy");
+			if (busy) {
+				busy.classList.remove("is-busy");
 			}
 			// Force it: the whole point of the action was to change something.
 			return refresh(true);

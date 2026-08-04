@@ -12,12 +12,14 @@
 
 ## What it does
 
-- **Every container on one page**, running and stopped, ordered by Compose project.
-  As many tiles per line as the screen has room for — seven on a wide monitor, one
-  on a phone. Same page, no app to install. What is stopped folds away below.
+- **Every container on one page**, running and stopped, ordered by Compose project
+  and coloured by it. As many tiles per line as the screen has room for — seven on a
+  wide monitor, one on a phone. Same page, no app to install.
 - **The port each service is on**, and a link straight to it where there is a web
   interface behind it.
 - **Start, stop and restart** with one click.
+- **Start or stop a whole stack**, in the order its `depends_on` asks for, because
+  that is usually what you actually want.
 - **Choose when a container starts again** — never, unless you stopped it, or always.
 - **Recreate** a container so it picks up a rebuilt image. This is the thing a
   restart cannot do, and the reason this project exists.
@@ -139,19 +141,38 @@ grey stopped. A colour is scannable across thirty cards in a way a dot beside th
 names is not, and nothing depends on seeing it: the status text says the same thing
 in Docker's own words.
 
-**What is not running has its own folded section** below the grid. On a host where
-six of thirty-three containers are stopped on purpose, they are what you go looking
-for, not what you watch. A container *restarting* stays in the grid: a crash loop is
-the one thing on the page that wants attention, and it is offered **Stop** rather
-than Start, because Docker cannot start what is already trying.
+**What is not running has its own section** below the grid, foldable but not folded:
+a stopped container is still part of what is on this host, and a page that hides half
+its contents behind a click makes you click it every time. A container *restarting*
+stays in the grid: a crash loop is the one thing on the page that wants attention,
+and it is offered **Stop** rather than Start, because Docker cannot start what is
+already trying.
 
 The cards form **one grid, not a section per Compose project**. A project is not a
 layout unit: on a typical host two thirds of them hold a single container, so a
 section each means a row each, which is how a wide screen ends up showing one card
-per line and scrolling for pages. The containers of a project stay next to each
-other because that is how they are sorted, and a card names its project unless the
-project and the service are the same word — a one-service stack, where the name
-already says it.
+per line and scrolling for pages.
+
+So the projects are carried by colour instead. The containers of one are next to each
+other because that is how they are sorted, and where a project holds **more than one
+container, its cards share a colour on their top edge** — the edge the state does not
+use. A project with a single container gets none: it *is* that container, and a colour
+tying a card to itself says nothing.
+
+**Stacks are started and stopped as a whole** from the strip above the grid, one chip
+per multi-container project, in that project's colour — so the colours have a legend
+rather than needing one. A stack is the unit you deploy, and its containers are rarely
+interesting one at a time. `Start all` walks the stack in the order Compose's own
+`depends_on` asks for and `Stop all` walks it backwards, so a database comes up before
+what needs it and goes down after. Containers already in the state you asked for are
+left alone, one that fails does not stop the others, and if docKontroler is part of the
+stack it stays running — stopping it would kill the request half-way through. Single
+container projects have no chip: the card's own buttons already are the stack control.
+
+The order comes from a label Compose writes onto the containers themselves, so nothing
+here reads your yaml. Containers created by Compose v1 do not have it and fall back to
+service-name order. Nor is it a `compose up`: **nothing is created or removed**, only
+started and stopped, and a service scaled to zero stays at zero.
 
 **Ports** are the host ports, with the container port after an arrow when the two
 differ (`8080 → 80`). A tcp port on a running container is a link, and it is built

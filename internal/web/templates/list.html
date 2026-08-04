@@ -14,23 +14,65 @@
 <p class="empty">No containers on this host yet.</p>
 {{end}}
 
+{{/* One chip per Compose project that holds more than one container, in the colour
+     its cards carry — so the colour needs no legend, it has one. It is also where a
+     stack is started or stopped as a whole, which is usually what somebody wants: a
+     stack is the unit you deploy, and its containers are rarely interesting one at a
+     time. Single-container projects are left out on purpose; their container's own
+     buttons already are the stack control. */}}
+{{with .Stacks}}
+<ul class="stacks">
+	{{range .}}
+	<li class="stack {{.Class}}" data-project="{{.Project}}">
+		<span class="stack__name" title="Compose project {{.Project}}">{{.Project}}</span>
+		<span class="stack__count" title="{{.Active}} of {{.Total}} containers are up">{{.Active}}/{{.Total}}</span>
+
+		{{/* Whole buttons rather than a conditional disabled attribute, as on the cards:
+		     a button that cannot do anything is not offered as a form at all. */}}
+		{{if eq .Active .Total}}
+		<button type="button" class="btn btn--slim" disabled
+		        title="every container in this stack is already up">Start all</button>
+		{{else}}
+		<form method="post" action="/stacks/{{.Project}}/start">
+			<button type="submit" class="btn btn--slim">Start all</button>
+		</form>
+		{{end}}
+
+		{{/* Confirmed, unlike a single container: this one button can take a whole
+		     service down, and it sits right next to the one that brings it up. */}}
+		{{if .Active}}
+		<form method="post" action="/stacks/{{.Project}}/stop"
+		      data-confirm="Stop the whole {{.Project}} stack?&#10;&#10;{{.Active}} of {{.Total}} containers are running and will be stopped, the ones that depend on others first.{{if .HasSelf}}&#10;&#10;docKontroler itself belongs to this stack and will be left running.{{end}}">
+			<button type="submit" class="btn btn--slim btn--danger">Stop all</button>
+		</form>
+		{{else}}
+		<button type="button" class="btn btn--slim" disabled
+		        title="nothing in this stack is running">Stop all</button>
+		{{end}}
+	</li>
+	{{end}}
+</ul>
+{{end}}
+
 {{/* One flat grid over every container that is up, not a section per Compose
      project. A project is not a layout unit: on a typical host two thirds of them
      hold a single container, so a section each means a row each — which is how a
      wide monitor ends up showing one card per line. The containers of a project
-     stay next to each other because that is how they are sorted, and each card
-     names its own project. */}}
+     stay next to each other because that is how they are sorted, and the cards of a
+     stack share a colour on their top edge. */}}
 {{with .Active}}
 <ul class="rows">
 	{{range .}}{{template "card" .}}{{end}}
 </ul>
 {{end}}
 
-{{/* What is not running is what you go looking for, not what you watch. It keeps
-     its own section, folded away, so the everyday page is only the live host.
+{{/* What is not running keeps its own section below the live host, because a
+     stopped container is not something you watch — but it is open, because it is
+     still part of what is on this host, and a page that hides half its contents
+     behind a click makes you click it every time. Foldable, not folded.
      Anything restarting stays in the grid above: a crash loop is not idle. */}}
 {{with .Stopped}}
-<details class="stopped">
+<details class="stopped" open>
 	<summary class="stopped__summary">
 		not running <span class="stopped__count">{{len .}}</span>
 	</summary>
@@ -45,7 +87,7 @@
      eye should land on, and the controls are deliberately quieter than both. */}}
 {{define "card"}}
 {{$host := .Host}}
-<li class="row row--{{.StateClass}}{{if .IsSelf}} row--self{{end}}"
+<li class="row row--{{.StateClass}}{{if .IsSelf}} row--self{{end}}{{with .ProjectClass}} row--stacked {{.}}{{end}}"
     data-id="{{.ID}}" data-name="{{.Name}}">
 	<div class="row__head">
 		<span class="row__name" title="{{.Name}}">
@@ -60,7 +102,7 @@
 	     project and service with a number after it — which the first two already
 	     say. It stays one hover away, on the name. */}}
 	<span class="row__sub">
-		{{if and .ComposeProject (ne .ComposeProject .ComposeService)}}
+		{{if .ShowProject}}
 		<span class="row__project" title="Compose project {{.ComposeProject}}">{{.ComposeProject}}</span>
 		{{end}}
 		<span class="row__image" title="{{.Image}}">{{.Image}}</span>

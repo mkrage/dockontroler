@@ -22,8 +22,9 @@ var (
 	// ErrNotFound means the container is gone — usually because it was removed
 	// between rendering the page and clicking a button.
 	ErrNotFound = errors.New("container not found")
-	// ErrBusy means another operation on the same container is still running.
-	ErrBusy = errors.New("another operation on this container is still running")
+	// ErrBusy means another operation on the same container — or on the same
+	// stack — is still running.
+	ErrBusy = errors.New("another operation is still running")
 	// ErrProtected means the action was refused on docKontroler's own container.
 	ErrProtected = errors.New("dockontroler cannot do this to its own container")
 	// ErrUnsupported means the container cannot be recreated, with the reason in

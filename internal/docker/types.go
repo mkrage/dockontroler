@@ -33,6 +33,12 @@ const (
 	// container was created from. Compose records the paths as the process that ran
 	// it saw them, which is not necessarily where they are on the host.
 	LabelComposeConfigFiles = "com.docker.compose.project.config_files"
+	// LabelComposeDependsOn lists the services this one waits for, as
+	// "service:condition:required" entries separated by commas. It is the only trace
+	// of a stack's depends_on graph left on the host, which is what makes starting a
+	// whole project in a sensible order possible without reading its yaml. Compose
+	// v2 writes it; containers created by older versions do not have it.
+	LabelComposeDependsOn = "com.docker.compose.depends_on"
 )
 
 // ContainerSummary is one entry of GET /containers/json. Only the fields the

@@ -40,15 +40,46 @@ type overviewData struct {
 	Host string
 }
 
-// card is what the template renders one container from: the container itself plus
-// the host, which every published port needs to become a link.
+// card is what the template renders one container from: the container itself, the
+// host that every published port needs to become a link, and the colour of the
+// stack it belongs to.
 type card struct {
 	manager.Container
 	Host string
+	// ProjectClass is the stylesheet's colour slot for this container's Compose
+	// project, or "" for a container that is not part of a multi-container stack.
+	ProjectClass string
 }
 
+// ShowProject decides whether the sub line names the Compose project. It is left
+// out when the name would only repeat the service name above it — except on a card
+// that carries a project colour, where the name is what explains the colour.
+func (c card) ShowProject() bool {
+	if c.ComposeProject == "" {
+		return false
+	}
+	return c.ProjectClass != "" || c.ComposeProject != c.ComposeService
+}
+
+// stack is one Compose project in the strip above the grid: what it is called, how
+// much of it is up, and the colour its cards carry.
+type stack struct {
+	Project string
+	Class   string
+	Active  int
+	Total   int
+	// HasSelf is true when docKontroler runs in this project, which is why stopping
+	// it will leave one container behind.
+	HasSelf bool
+}
+
+// projectColours is how many colour slots app.css defines. Slots are reused beyond
+// that, which is fine: what a colour has to tell apart is neighbours in the grid,
+// not every project on the host at once.
+const projectColours = 6
+
 // Active and Stopped split the overview into the grid you look at and the section
-// you unfold when you go looking for something.
+// below it.
 //
 // The split lives here, not in the manager: Overview.Groups is what /api/containers
 // serves, and a scripted consumer should keep getting every container in one
@@ -57,18 +88,65 @@ func (o overviewData) Active() []card { return o.cards(true) }
 
 func (o overviewData) Stopped() []card { return o.cards(false) }
 
+// Stacks is the strip above the grid: every Compose project that has more than one
+// container, in the same order — and the same colour — as its cards.
+func (o overviewData) Stacks() []stack {
+	classes := projectClasses(o.Groups)
+
+	var stacks []stack
+	for _, group := range o.Groups {
+		if !group.Stack() {
+			continue
+		}
+		stacks = append(stacks, stack{
+			Project: group.Project,
+			Class:   classes[group.Project],
+			Active:  group.ActiveCount(),
+			Total:   len(group.Containers),
+			HasSelf: group.HasSelf(),
+		})
+	}
+	return stacks
+}
+
 // cards flattens the groups, keeping their order, so containers of one Compose
 // project stay next to each other in the grid.
 func (o overviewData) cards(active bool) []card {
+	classes := projectClasses(o.Groups)
+
 	var cards []card
 	for _, group := range o.Groups {
 		for _, container := range group.Containers {
 			if container.Active() == active {
-				cards = append(cards, card{Container: container, Host: o.Host})
+				cards = append(cards, card{
+					Container:    container,
+					Host:         o.Host,
+					ProjectClass: classes[container.ComposeProject],
+				})
 			}
 		}
 	}
 	return cards
+}
+
+// projectClasses hands every multi-container project one of the stylesheet's colour
+// slots. It is what replaces the per-project headings the list used to be cut into:
+// the cards of a stack are already adjacent, and the colour is what makes that
+// visible in a grid.
+//
+// Slots go out in the order the projects are listed, not hashed from the name.
+// Adjacency is the whole point, so what matters is that neighbours differ — and
+// consecutive slots are the ones the palette keeps furthest apart. It also means the
+// same project keeps its colour across the grid and the not-running section below
+// it, and across a refresh, since the order is stable.
+func projectClasses(groups []manager.Group) map[string]string {
+	classes := map[string]string{}
+	for _, group := range groups {
+		if group.Stack() {
+			classes[group.Project] = fmt.Sprintf("pc%d", len(classes)%projectColours)
+		}
+	}
+	return classes
 }
 
 // linkHost is the request's host without its port, ready to drop into a URL.
@@ -178,6 +256,30 @@ func (s *Server) handleAction(action string) http.HandlerFunc {
 		}
 
 		s.finishAction(w, r, action, id, message, err)
+	}
+}
+
+// handleStack builds the handler for starting or stopping a whole Compose project.
+//
+// It reports partial outcomes rather than only success or failure: a stack where
+// one container refused to stop is neither, and "3 stopped, 1 failed" is the only
+// answer that tells the user what to do next.
+func (s *Server) handleStack(action string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		project := r.PathValue("project")
+
+		var (
+			result manager.StackResult
+			err    error
+		)
+		if action == "start" {
+			result, err = s.manager.StartStack(r.Context(), project)
+		} else {
+			result, err = s.manager.StopStack(r.Context(), project)
+		}
+
+		s.finishAction(w, r, "stack "+action, project,
+			joinMessage(result.Message(), result.Notes), err)
 	}
 }
 
