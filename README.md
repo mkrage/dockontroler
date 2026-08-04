@@ -84,10 +84,13 @@ services:
       - no-new-privileges:true
 
     environment:
-      # All optional, defaults are in Configuration below.
+      # All optional, defaults are in Configuration below. Keep one of them
+      # active: a key with only comments under it is null, and compose rejects
+      # that ("environment must be a mapping").
+      LOG_LEVEL: "info"
+
       # REFRESH_INTERVAL: "5s"
       # STOP_TIMEOUT: "10s"
-      # LOG_LEVEL: "info"
 
       # Telegram. Without a token the bot does not run at all; with one, the
       # allow-list is mandatory and startup fails without it.

@@ -49,12 +49,16 @@ services:
     # an external monitor at it. See the README.
 
     environment:
-      # All of these are optional; the defaults are shown.
+      # All of these are optional; the defaults are shown. LOG_LEVEL is the one
+      # left active, set to its own default, because a key with nothing but
+      # comments under it is YAML null, and compose rejects that with
+      # "environment must be a mapping" instead of reading it as "empty".
+      LOG_LEVEL: "info"
+
       # LISTEN_ADDR: ":3625"
       # DOCKER_SOCKET: "/var/run/docker.sock"
       # REFRESH_INTERVAL: "5s"
       # STOP_TIMEOUT: "10s"
-      # LOG_LEVEL: "info"
 
       # Telegram bot. Leave the token unset to run without it.
       #
