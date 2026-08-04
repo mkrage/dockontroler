@@ -167,16 +167,17 @@ code {
 	background: var(--running);
 }
 
-/* Wide enough for three container tiles beside each other on a normal desktop,
-   which is the point of tiles at all — see .rows. */
+/* Deliberately generous: the page holds tiles, not prose, so there is no line
+   length to protect — capping it at a typical text width left half of a 2560-pixel
+   monitor empty while the list scrolled for pages. */
 .page {
-	max-width: 1400px;
+	max-width: 2400px;
 	margin: 0 auto;
 	padding: 1.25rem;
 }
 
 .footer {
-	max-width: 1400px;
+	max-width: 2400px;
 	margin: 0 auto;
 	padding: 0 1.25rem 2rem;
 	color: var(--text-dim);
@@ -262,39 +263,14 @@ code {
 	border-radius: var(--radius);
 }
 
-/* ---------- projects ---------- */
+/* ---------- the grid of containers ---------- */
 
-.project {
-	margin-bottom: 1.75rem;
-}
-
-.project__name {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	margin: 0 0 0.6rem;
-	font-size: 0.78rem;
-	font-weight: 650;
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
-	color: var(--text-dim);
-}
-
-.project__count {
-	padding: 0.05rem 0.4rem;
-	border-radius: 999px;
-	background: var(--surface-alt);
-	border: 1px solid var(--border);
-	font-size: 0.72rem;
-	letter-spacing: 0;
-}
-
-/* Where the layout adapts to the screen. Each container is a self-contained
-   card; the only difference between a phone and a desktop is how many of them fit
-   beside each other. One column is a list you scroll, three are tiles you scan —
-   same markup, so nothing has to know which client is asking.
-   auto-fill rather than a fixed column count: the browser takes as many as its
-   own width allows, which also covers a half-width window on a big monitor. */
+/* Where the layout adapts to the screen. Each container is a self-contained card;
+   the only difference between a phone and a desktop is how many of them fit beside
+   each other. One column is a list you scroll, five are tiles you scan — same
+   markup, so nothing has to know which client is asking.
+   auto-fill rather than a fixed column count: the browser takes as many as its own
+   width allows, which also covers a half-width window on a big monitor. */
 .rows {
 	list-style: none;
 	margin: 0;
@@ -307,10 +283,12 @@ code {
 	gap: 0.6rem;
 }
 
-/* 58rem is where two cards fit without the three action buttons wrapping. */
-@media (min-width: 58rem) {
+/* 45rem is where two cards fit without the three action buttons wrapping. The
+   19rem minimum is what a card needs for those buttons plus "Unless stopped"; the
+   wider it is, the fewer columns a monitor gets for no gain in what a card says. */
+@media (min-width: 45rem) {
 	.rows {
-		grid-template-columns: repeat(auto-fill, minmax(23rem, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
 	}
 }
 
@@ -392,20 +370,34 @@ code {
 	font-size: 0.8rem;
 }
 
+/* The Compose project this container belongs to. It replaces the per-project
+   heading the list used to be cut into: kept out of the shrinking, because it is
+   the one word that says which stack a card belongs to. */
+.row__project {
+	flex: none;
+	max-width: 45%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--text);
+	font-weight: 600;
+}
+
+.row__project::after {
+	content: "·";
+	margin-left: 0.5rem;
+	font-weight: 400;
+	color: var(--text-dim);
+}
+
 /* min-width, because a flex item refuses to shrink below its content by default
    and the ellipsis would never come into play — an image pinned to a digest is
    80 characters of unbreakable text. */
-.row__image,
-.row__cname {
+.row__image {
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-}
-
-.row__cname::before {
-	content: "·";
-	margin-right: 0.5rem;
 }
 
 .tag {
@@ -507,13 +499,15 @@ a.port:hover {
 	gap: 0.35rem;
 }
 
+/* The basis has to stay under a third of the narrowest card, or the three buttons
+   wrap and every card in the grid grows a line it does not need. */
 .row__actions form {
 	margin: 0;
-	flex: 1 1 6rem;
+	flex: 1 1 5rem;
 }
 
 .row__actions .btn {
-	flex: 1 1 6rem;
+	flex: 1 1 5rem;
 	width: 100%;
 }
 

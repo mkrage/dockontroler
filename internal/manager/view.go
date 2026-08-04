@@ -74,6 +74,27 @@ func (c Container) PolicyFile() string {
 	return c.ComposeFiles[len(c.ComposeFiles)-1]
 }
 
+// PolicyFileLabel is PolicyFile shortened to the part that identifies it: the
+// directory and the file name.
+//
+// Clipping the string in CSS instead cut the wrong end. Stacks deployed by
+// Portainer all live under the same long prefix — /data/compose/43/... — so what
+// survived the ellipsis was the half every container shares, and the number that
+// says which stack was the first thing to go.
+func (c Container) PolicyFileLabel() string {
+	path := c.PolicyFile()
+	// Compose records the path as the process that ran it saw it, so the separator
+	// is whatever that platform uses.
+	cut := strings.LastIndexAny(path, `/\`)
+	if cut <= 0 {
+		return path
+	}
+	if parent := strings.LastIndexAny(path[:cut], `/\`); parent >= 0 {
+		return path[parent+1:]
+	}
+	return path
+}
+
 // StateClass is a coarse bucket for CSS and for the bot's status icon.
 func (c Container) StateClass() string {
 	switch c.State {

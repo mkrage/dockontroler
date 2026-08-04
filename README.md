@@ -12,8 +12,9 @@
 
 ## What it does
 
-- **Every container on one page**, running and stopped, grouped by Compose project.
-  Tiles on a desktop, one card per line on a phone — same page, no app to install.
+- **Every container on one page**, running and stopped, ordered by Compose project.
+  As many tiles per line as the screen has room for — seven on a wide monitor, one
+  on a phone. Same page, no app to install.
 - **The port each service is on**, and a link straight to it where there is a web
   interface behind it.
 - **Start, stop and restart** with one click.
@@ -129,8 +130,16 @@ is one static binary with the templates compiled in.
 
 Each container is a card: state, name, image, its ports, the three actions and the
 restart policy. How many cards sit beside each other is left to the browser — one
-per line on a phone, two or three on a desktop. There is no separate mobile page
-and no client detection; it is the same HTML either way.
+per line on a phone, four on a laptop, seven on a 2560-pixel monitor. There is no
+separate mobile page and no client detection; it is the same HTML either way.
+
+The cards form **one grid, not a section per Compose project**. A project is not a
+layout unit: on a typical host two thirds of them hold a single container, so a
+section each means a row each, which is how a wide screen ends up showing one card
+per line and scrolling for pages. The containers of a project stay next to each
+other because that is how they are sorted, and a card names its project unless the
+project and the service are the same word — a one-service stack, where the name
+already says it.
 
 **Ports** are the host ports, with the container port after an arrow when the two
 differ (`8080 → 80`). A tcp port on a running container is a link, and it is built

@@ -15,31 +15,38 @@
 
 {{if not .Groups}}
 <p class="empty">No containers on this host yet.</p>
-{{end}}
-
-{{range .Groups}}
-<section class="project">
-	<h2 class="project__name">
-		{{if .Project}}{{.Project}}{{else}}Standalone containers{{end}}
-		<span class="project__count">{{len .Containers}}</span>
-	</h2>
-
-	{{/* One card per container, laid out side by side once the viewport has room
-	     for it — see .rows in the stylesheet. */}}
-	<ul class="rows">
-		{{range .Containers}}
+{{else}}
+{{/* One flat grid over every container, not a grid per Compose project.
+     A project is not a layout unit: two thirds of a typical host's projects hold a
+     single container, and a section per project means a row per project — which is
+     how a wide monitor ends up showing one card per line and scrolling for pages.
+     The containers of a project stay next to each other because they are sorted
+     that way, and each card names its own project. */}}
+<ul class="rows">
+	{{range .Groups}}
+	{{$project := .Project}}
+	{{range .Containers}}
 		<li class="row{{if .IsSelf}} row--self{{end}}" data-id="{{.ID}}" data-name="{{.Name}}">
 			<div class="row__head">
 				<span class="dot dot--{{.StateClass}}" title="{{.State}}"></span>
 
+				{{/* Project and image, not the container name as well: a card is too
+				     narrow for three truncated strings, and the container name of a
+				     Compose service is its project and service with a number after it —
+				     which the first two already say. It stays one hover away. */}}
 				<div class="row__ident">
-					<span class="row__name">
+					<span class="row__name" title="{{.Name}}">
 						{{if .ComposeService}}{{.ComposeService}}{{else}}{{.Name}}{{end}}
 						{{if .IsSelf}}<span class="tag">this is me</span>{{end}}
 					</span>
 					<span class="row__sub">
+						{{/* Not when the project and the service are the same word, which is
+						     what a one-service stack looks like: the name above already
+						     says it, and repeating it costs half the line. */}}
+						{{if and $project (ne $project .ComposeService)}}
+						<span class="row__project" title="Compose project {{$project}}">{{$project}}</span>
+						{{end}}
 						<span class="row__image" title="{{.Image}}">{{.Image}}</span>
-						{{if .ComposeService}}<span class="row__cname">{{.Name}}</span>{{end}}
 					</span>
 				</div>
 
@@ -112,14 +119,16 @@
 				{{if not (or (.PolicyIs "no") (.PolicyIs "unless-stopped") (.PolicyIs "always"))}}
 				<span class="hint">currently: {{.Policy}}</span>
 				{{end}}
-				{{with .PolicyFile}}
+				{{/* if, not with: the label and the full path in the title both come
+				     from the container, so the dot has to stay pointing at it. */}}
+				{{if .PolicyFile}}
 				<span class="hint hint--path"
-				      title="Set restart: in this file too, or the next rebuild from compose overwrites the policy. Path as compose recorded it: {{.}}">restart: in {{.}}</span>
+				      title="Set restart: in this file too, or the next rebuild from compose overwrites the policy. Path as compose recorded it: {{.PolicyFile}}">restart: in {{.PolicyFileLabel}}</span>
 				{{end}}
 			</div>
 		</li>
-		{{end}}
-	</ul>
-</section>
+	{{end}}
+	{{end}}
+</ul>
 {{end}}
 {{end}}

@@ -213,6 +213,23 @@ func TestPolicyFileFromComposeLabel(t *testing.T) {
 			t.Errorf("PolicyFile() = %q, want empty so the UI stays quiet", got.PolicyFile())
 		}
 	})
+
+	// The label is what a card has room for. Every Portainer stack shares the long
+	// prefix, so the directory and file name are the only part that identifies one.
+	t.Run("label keeps the identifying end", func(t *testing.T) {
+		cases := map[string]string{
+			"/Volume2/@apps/Portainer/compose/43/docker-compose.yml": "43/docker-compose.yml",
+			"/srv/blog/docker-compose.override.yml":                  "blog/docker-compose.override.yml",
+			`C:\stacks\blog\compose.yaml`:                            `blog\compose.yaml`,
+			"docker-compose.yml":                                     "docker-compose.yml",
+			"":                                                       "",
+		}
+		for files, want := range cases {
+			if got := build(files).PolicyFileLabel(); got != want {
+				t.Errorf("PolicyFileLabel() for %q = %q, want %q", files, got, want)
+			}
+		}
+	})
 }
 
 func TestListSurvivesAFailedInspect(t *testing.T) {
