@@ -321,7 +321,11 @@ func TestIndexShowsPortsAndLinksThem(t *testing.T) {
 		t.Error("the port mapping is not shown")
 	}
 	// Reported twice by the Engine, once per address family, but it is one port.
-	if count := strings.Count(body, "8080 → 80"); count != 1 {
+	//
+	// Counted as the chip's own text, between the tags, rather than anywhere in the
+	// page: the card also carries the label inside data-search, so that is a second
+	// occurrence which has nothing to do with the deduplication this is about.
+	if count := strings.Count(body, ">8080 → 80<"); count != 1 {
 		t.Errorf("the port is shown %d times, want once", count)
 	}
 	// Exposed by the image but not published: unreachable, so naming it would
@@ -362,7 +366,11 @@ func TestStoppedContainersGetTheirOwnSection(t *testing.T) {
 	if section < 0 {
 		t.Fatalf("no section for the stopped container:\n%s", body)
 	}
-	if card := strings.Index(body, "blog-web-1"); card < section {
+	// The card itself, found by the attribute only a card has, not by its name as a
+	// bare string: the name is also in the tooltip of this container's cell in the
+	// strip at the top of the page, which is above the section on purpose and would
+	// otherwise look like the card being in the wrong place.
+	if card := strings.Index(body, `data-name="blog-web-1"`); card < section {
 		t.Error("the stopped container is in the grid above instead of the section below")
 	}
 	if !strings.Contains(body, `class="stopped" open`) {
