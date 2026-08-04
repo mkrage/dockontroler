@@ -525,44 +525,55 @@ code {
 
 /* ---------- project colours ---------- */
 
-/* One slot per Compose project that holds more than one container, handed out in
-   the order the projects are listed. Only the hue is stored per slot: the two themes
-   need very different lightness against white and against the dark surface, and one
-   variable beats keeping two palettes in step.
-   Three constraints decide the numbers, in this order.
-   Nothing from the arc that runs from red through amber to green (roughly 345 round
-   through 0 to 165): those three are the container state on the left edge of every
-   card, and a project colour borrowing one would read as a state. What is left is
-   cyan through blue and violet to pink - 188 to 336, and every slot lives in there.
-   Eight of them, not six, because the slots wrap: with six, a host running seven
-   stacks gives its first and its last the same colour, side by side in the same strip.
-   Eight is what fits at a distance worth having; a ninth stack starts over at pc0.
-   And the order is not the hue order. Consecutive slots go to projects that end up
-   next to each other, so each jumps about a third of the way along the arc from the
-   last: no two neighbours are closer than 64 degrees, where sorting by hue would put
-   them 20 apart and make the four blues in the middle indistinguishable. The wrap from
-   pc7 back to pc0 is the widest gap of all, 148, so the seam is the least visible
-   place for the repeat to happen - and pink, the one slot near a reserved hue, is
-   last, so it is only reached on a host with eight stacks. */
-.pc0 { --project-hue: 188; } /* cyan */
-.pc1 { --project-hue: 282; } /* violet */
-.pc2 { --project-hue: 212; } /* sky blue */
-.pc3 { --project-hue: 304; } /* purple */
-.pc4 { --project-hue: 236; } /* blue */
-.pc5 { --project-hue: 324; } /* magenta */
-.pc6 { --project-hue: 260; } /* indigo */
-.pc7 { --project-hue: 336; } /* pink */
+/* One slot per Compose project that holds more than one container, handed out in the
+   order the projects are listed. Every slot is written out for both themes rather than
+   spun off one hue, and that is the point of this block: a formula that varies nothing
+   but the hue can only hand out as many colours as the circle has room for — and here
+   most of the circle is already saying something else.
+   What is not available: green, amber and red, which on a card mean running, in
+   transition and dead, and grey, which is what a stopped container is. A project
+   borrowing one of those would read as a state.
+   What is left is cyan through blue and violet to pink, and it does not hold ten colours
+   however the degrees are divided up: at one fixed lightness that arc is good for about
+   six anybody can tell apart, which is why eight slots taken from it came out as a strip
+   of blue and violet with some pink at the end — two of them a hair from the next.
+   The tenth family is the one place the warm half can be borrowed from without lying: a
+   yellow-green, which is nowhere near the amber of a container in transition and far
+   enough from running green in both hue and lightness to be read as a different thing.
+   A tan or a bronze is not — that was tried, and beside an amber "Restarting" it looked
+   like a second warning.
+   The order is not the colour wheel's, and it is not arbitrary either: slots go out in
+   sequence, so the first seven are the seven of these ten that stand furthest apart from
+   each other — no two of them closer than 18 degrees of hue, where the ten sorted by hue
+   sit 12 apart in places. The three that are somebody else's near-neighbour — teal and
+   sky, which are both a cyan, and purple, which is a violet — are last, so a host reaches
+   them only once it runs eight stacks. An eleventh stack starts over at pc0.
+   Every value below clears 4.5:1 against the card it is set on: the project colour is
+   also the project's name in text, not only a three-pixel edge. */
+.pc0 { --project: #0e7490; } /* cyan */
+.pc1 { --project: #6d28d9; } /* violet */
+.pc2 { --project: #4d7c0f; } /* yellow-green */
+.pc3 { --project: #a21caf; } /* magenta */
+.pc4 { --project: #1d4ed8; } /* blue */
+.pc5 { --project: #be185d; } /* pink */
+.pc6 { --project: #4338ca; } /* indigo */
+.pc7 { --project: #0f766e; } /* teal */
+.pc8 { --project: #7e22ce; } /* purple */
+.pc9 { --project: #0369a1; } /* sky */
 
-.row--stacked,
-.stack {
-	--project: hsl(var(--project-hue) 52% 42%);
-}
-
+/* The same ten families against a dark card, which needs the light end of each of them
+   rather than the same colour dimmed. */
 @media (prefers-color-scheme: dark) {
-	.row--stacked,
-	.stack {
-		--project: hsl(var(--project-hue) 58% 65%);
-	}
+	.pc0 { --project: #22d3ee; }
+	.pc1 { --project: #a78bfa; }
+	.pc2 { --project: #a3e635; }
+	.pc3 { --project: #e879f9; }
+	.pc4 { --project: #60a5fa; }
+	.pc5 { --project: #f472b6; }
+	.pc6 { --project: #818cf8; }
+	.pc7 { --project: #2dd4bf; }
+	.pc8 { --project: #c084fc; }
+	.pc9 { --project: #38bdf8; }
 }
 
 /* ---------- the stacks strip ---------- */

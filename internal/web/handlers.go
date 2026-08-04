@@ -92,10 +92,13 @@ type stack struct {
 // projectColours is how many colour slots app.css defines — and it has to stay in
 // step with it, which is what TestProjectColoursMatchTheStylesheet is for.
 //
-// Eight, because the slots wrap: with six, a host running seven stacks gave its first
-// and its last the same colour, side by side in the same strip. Beyond eight it wraps
-// again; there is no hue left that is not already the meaning of a container state.
-const projectColours = 8
+// Ten, because the slots wrap and every wrap puts two stacks in the same colour: with
+// six, a host running seven stacks gave its first and its last one, side by side in the
+// same strip. Ten is where the palette stops — it is how many colour families can be
+// told apart once running green, transitional amber, dead red and stopped grey are
+// spoken for, and the reasoning behind each one is in app.css. An eleventh stack starts
+// over at pc0.
+const projectColours = 10
 
 // Active and Stopped split the overview into the grid you look at and the section
 // below it.
