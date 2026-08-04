@@ -25,20 +25,38 @@
 				fill="none" stroke="#FFAB1F" stroke-width="15" stroke-linecap="round" d="M52 56l36-23"/></svg><span
 				class="wm-ctrl">ontrol</span><span class="wm-outer">er</span></span>
 		</h1>
-		<div class="topbar__actions">
-			<!-- Outside the container list on purpose: what you have typed has to survive
-			     the list being swapped out under it every few seconds.
-			     Hidden until app.js unhides it. Filtering happens in the browser, on a
-			     list that is already there, so without JavaScript this box could not do
-			     anything and is better not offered. -->
-			<input type="search" class="filter" id="filter" hidden
-			       placeholder="Filter…" aria-label="Filter containers and stacks"
+		<!-- Outside the container list on purpose: what you have typed has to survive
+		     the list being swapped out under it every few seconds.
+		     The whole box is hidden until app.js unhides it, the magnifier included.
+		     Filtering happens in the browser, on a list that is already there, so
+		     without JavaScript this box could not do anything and is better not
+		     offered. -->
+		<div class="search" id="search" hidden>
+			<svg class="search__icon" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+			     stroke-width="1.6" aria-hidden="true"><circle cx="6.8" cy="6.8"
+			     r="4.6"/><path d="M10.3 10.3 14 14" stroke-linecap="round"/></svg>
+			<input type="search" class="filter" id="filter"
+			       placeholder="Filter containers, stacks, ports…"
+			       aria-label="Filter containers and stacks"
 			       autocomplete="off" spellcheck="false">
+			<!-- The shortcut app.js binds, said out loud rather than left to be
+			     discovered. It fades out while the box is in use. -->
+			<kbd class="search__key">/</kbd>
+		</div>
+
+		<div class="topbar__live">
+			<span class="topbar__pulse" id="pulse" aria-hidden="true"></span>
 			<!-- Filled in by app.js from the refreshed fragment; stays empty
 			     without JavaScript, where the list carries its own timestamp. -->
 			<span class="topbar__stamp" id="stamp"></span>
-			<span class="topbar__pulse" id="pulse" aria-hidden="true"></span>
-			<button type="button" class="btn" id="refresh-now">Refresh</button>
+			<button type="button" class="btn btn--quiet btn--icon-only-narrow"
+			        id="refresh-now" title="Refresh now">
+				<svg class="btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+				     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+				     aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path
+				     d="M21 3v5h-5"/></svg>
+				<span class="btn__label">Refresh</span>
+			</button>
 		</div>
 	</header>
 

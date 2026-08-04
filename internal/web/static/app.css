@@ -1,64 +1,117 @@
 /* docKontroler stylesheet.
  *
  * Hand-written on purpose: a CSS framework would be larger than the whole
- * interface. Colours come from custom properties so light and dark mode differ
- * only in the values at the top.
+ * interface. Colours, spacing and type sizes come from custom properties, so light
+ * and dark mode differ only in the values at the top.
+ *
+ * The page is a control panel for one Docker host, and it is read in two very
+ * different situations: leaning over a phone to check whether something is up, and
+ * sitting in front of a wide monitor to act on it. So the layout is one grid of
+ * cards that reflows, and the interface itself stays quiet — on a healthy host
+ * almost nothing on this page is coloured. What is coloured is what deviates.
  */
 
 :root {
-	--bg: #f6f7f9;
+	/* Surfaces, from the page background up to a raised card. A card is a shade
+	   lighter than the page and carries a hairline, rather than a hard border: with
+	   thirty cards on screen, a visible outline each is what made the page read as a
+	   wall of boxes. */
+	--bg: #eef0f4;
 	--surface: #ffffff;
-	--surface-alt: #f0f2f5;
-	--border: #dcdfe4;
-	--border-strong: #c3c8d0;
-	--text: #1b1f24;
-	--text-dim: #636c76;
+	--surface-alt: #f1f4f8;
+	--surface-sunken: #e8ebf0;
+	--hairline: #e5e9ef;
+	--border: #d9dee6;
+	--border-strong: #c2c9d3;
+
+	--text: #14181e;
+	--text-dim: #5c6673;
+	--text-faint: #8a939f;
+
 	--accent: #0b7285;
 	--accent-text: #ffffff;
+	/* The accent and the danger colour at low opacity: what a quiet control fills
+	   with on hover, and the halo around docKontroler's own card. */
+	--accent-soft: rgb(11 114 133 / 10%);
 	--danger: #b42318;
+	--danger-soft: rgb(180 35 24 / 9%);
+
 	--warn-bg: #fdf6e3;
 	--warn-border: #e2c88a;
 	--ok-bg: #e7f5ec;
 	--ok-border: #9cd4b0;
 	--err-bg: #fdecea;
 	--err-border: #f0b0aa;
+
+	/* Container states. These four are the only colours the page uses to mean
+	   something, which is why nothing else may borrow them. */
 	--running: #2f9e44;
-	--stopped: #909aa5;
-	--transitional: #e8a33d;
+	--stopped: #9aa4b0;
+	--transitional: #d98518;
 	--error: #d64545;
-	--radius: 7px;
-	--shadow: 0 1px 2px rgb(16 24 40 / 6%);
+
 	/* Wordmark colours: the word carries one, its single capital the other, so the
 	   K the mark is built from stands out of the name. */
 	--brand-dock: #0e7c8c;
 	--brand-ctrl: #ffab1f;
+
+	--radius: 10px;
+	--radius-sm: 7px;
+	--radius-xs: 5px;
+	--shadow-1: 0 1px 2px rgb(16 24 40 / 5%);
+	--shadow-2: 0 8px 24px rgb(16 24 40 / 10%), 0 2px 6px rgb(16 24 40 / 6%);
+
+	/* Two faces, and the split between them is what gives the page its character:
+	   labels and prose are set in the system's own interface font, everything the
+	   daemon reports — image references, ports, counts, timestamps — is monospaced.
+	   No web font is loaded: the binary is one file, and a download nobody asked for
+	   is the wrong price for a typeface. */
+	--font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+	--font-mono: ui-monospace, "Cascadia Mono", SFMono-Regular, "SF Mono", Menlo,
+		Consolas, "Liberation Mono", monospace;
+
+	/* Native form controls and scrollbars follow this rather than needing to be
+	   restyled into the theme by hand. */
+	color-scheme: light dark;
 }
 
 @media (prefers-color-scheme: dark) {
 	:root {
-		--bg: #16191d;
-		--surface: #1e2227;
-		--surface-alt: #262b31;
-		--border: #333a42;
-		--border-strong: #454d57;
-		--text: #e6e9ed;
-		--text-dim: #98a1ab;
-		--accent: #3aa7bd;
-		--accent-text: #0d1216;
-		--danger: #e5726a;
-		--warn-bg: #3a3016;
-		--warn-border: #6b5824;
-		--ok-bg: #16301f;
+		--bg: #0f1216;
+		--surface: #171b21;
+		--surface-alt: #1e242b;
+		--surface-sunken: #13171c;
+		--hairline: #242a33;
+		--border: #2b323b;
+		--border-strong: #3d4650;
+
+		--text: #e6eaef;
+		--text-dim: #8f99a5;
+		--text-faint: #6c7682;
+
+		--accent: #35a8bd;
+		--accent-text: #06131a;
+		--accent-soft: rgb(53 168 189 / 14%);
+		--danger: #ee8b83;
+		--danger-soft: rgb(238 139 131 / 13%);
+
+		--warn-bg: #33290f;
+		--warn-border: #63511f;
+		--ok-bg: #14301e;
 		--ok-border: #2b5c3a;
-		--err-bg: #3a1d1a;
+		--err-bg: #351a17;
 		--err-border: #6d312b;
-		--running: #51cf66;
-		--stopped: #7b858f;
+
+		--running: #4ec66a;
+		--stopped: #6f7986;
 		--transitional: #f0b849;
 		--error: #ff6b6b;
-		--shadow: 0 1px 2px rgb(0 0 0 / 30%);
+
 		--brand-dock: #38bdd0;
 		--brand-ctrl: #ffab1f;
+
+		--shadow-1: 0 1px 2px rgb(0 0 0 / 35%);
+		--shadow-2: 0 10px 28px rgb(0 0 0 / 45%), 0 2px 8px rgb(0 0 0 / 35%);
 	}
 }
 
@@ -77,31 +130,54 @@ body {
 	margin: 0;
 	background: var(--bg);
 	color: var(--text);
-	font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+	font: 15px/1.5 var(--font-ui);
 	-webkit-text-size-adjust: 100%;
 }
 
 code {
-	font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+	font-family: var(--font-mono);
 	font-size: 0.9em;
 	background: var(--surface-alt);
 	padding: 0.1em 0.35em;
-	border-radius: 4px;
+	border-radius: var(--radius-xs);
+}
+
+/* Nothing on this page animates for its own sake, but the few things that do are
+   still motion somebody may have asked their system to stop. */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		transition-duration: 0ms !important;
+		animation-duration: 0ms !important;
+		animation-iteration-count: 1 !important;
+	}
 }
 
 /* ---------- top bar ---------- */
 
-/* Wraps, because the right-hand side now holds a filter box as well: on a phone the
-   actions drop onto a second line instead of squeezing the wordmark out of shape. */
+/* A grid, not a flex row, and this is the whole reason: the bar holds three things
+   of very different widths, and with flex the middle one decided how tall the bar
+   was. A filter box wide enough to be useful pushed the button beside it onto a
+   second line, which made the header grow, the wordmark drift and everything below
+   it move down — for a box nobody had typed in yet.
+   Here the three tracks are fixed in kind: the wordmark takes what it needs, the
+   filter takes the space that is left over, and the live cluster takes what it
+   needs. Nothing in the bar can change its height, so nothing below it moves.
+   Opaque, and deliberately so: a blurred translucent bar over the scrolling list
+   looked the part, but it makes the browser recomposite the whole viewport on every
+   scroll frame — on a page that replaces its own contents every few seconds and is
+   read on a phone, that is a real cost for an effect nobody asked for. The hairline
+   underneath separates the bar from what scrolls beneath it just as well. */
 .topbar {
-	display: flex;
-	flex-wrap: wrap;
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
 	align-items: center;
-	justify-content: space-between;
-	gap: 0.5rem 1rem;
-	padding: 0.85rem 1.25rem;
+	gap: 0.5rem 1.5rem;
+	min-height: 3.5rem;
+	padding: 0.5rem 1.25rem;
 	background: var(--surface);
-	border-bottom: 1px solid var(--border);
+	border-bottom: 1px solid var(--hairline);
 	position: sticky;
 	top: 0;
 	z-index: 10;
@@ -110,9 +186,8 @@ code {
 .topbar__title {
 	display: flex;
 	align-items: center;
-	gap: 0.5rem;
 	margin: 0;
-	font-size: 1.15rem;
+	font-size: 1.2rem;
 	letter-spacing: -0.02em;
 }
 
@@ -152,55 +227,118 @@ code {
 	top: 0.136em;
 }
 
-.topbar__actions {
+/* ---------- the filter box ---------- */
+
+/* Centred in the space between the wordmark and the live cluster, and capped, so it
+   is a deliberate object rather than a field that stretches to whatever is left.
+   Hidden until app.js unhides it: filtering happens in the browser, on a list that
+   is already there, so without JavaScript this box could not do anything and is
+   better not offered. */
+.search {
+	position: relative;
+	justify-self: center;
 	display: flex;
-	flex-wrap: wrap;
 	align-items: center;
-	justify-content: flex-end;
-	gap: 0.5rem 0.75rem;
+	width: 100%;
+	max-width: 30rem;
 }
 
-/* Top right, where a search box is looked for. It shrinks before anything beside it
-   does and stops at a width that still shows what was typed. */
+.search__icon {
+	position: absolute;
+	left: 0.6rem;
+	width: 15px;
+	height: 15px;
+	color: var(--text-faint);
+	pointer-events: none;
+}
+
+/* The padding on the right leaves room for the key hint sitting in the field. */
 .filter {
-	flex: 0 1 12rem;
-	min-width: 7rem;
-	padding: 0.28rem 0.55rem;
-	border: 1px solid var(--border-strong);
-	border-radius: 5px;
-	background: var(--surface);
+	width: 100%;
+	padding: 0.4rem 2.2rem 0.4rem 2rem;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	background: var(--surface-alt);
 	color: var(--text);
 	font: inherit;
-	font-size: 0.85rem;
+	font-size: 0.88rem;
+	transition: border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
 }
 
 .filter::placeholder {
-	color: var(--text-dim);
+	color: var(--text-faint);
 }
 
-.filter:focus-visible {
-	outline: 2px solid var(--accent);
-	outline-offset: 1px;
+.filter:hover {
+	border-color: var(--border-strong);
+}
+
+.filter:focus {
+	outline: none;
+	background: var(--surface);
+	border-color: var(--accent);
+	box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* The shortcut is worth showing rather than hiding in a tooltip — and worth taking
+   out of the way the moment somebody is actually typing. */
+.search__key {
+	position: absolute;
+	right: 0.5rem;
+	padding: 0.05rem 0.3rem;
+	border: 1px solid var(--border);
+	border-radius: var(--radius-xs);
+	color: var(--text-faint);
+	background: var(--surface);
+	font-family: var(--font-mono);
+	font-size: 0.7rem;
+	pointer-events: none;
+	transition: opacity 120ms ease;
+}
+
+.filter:focus ~ .search__key {
+	opacity: 0;
+}
+
+/* ---------- the live cluster ---------- */
+
+/* When the page last heard from the daemon, and the button that asks again. The
+   minimum width is what keeps the filter box beside it from drifting: the timestamp
+   is monospaced and therefore constant, but a browser that falls back to a
+   proportional font would otherwise move everything by a pixel every second. */
+.topbar__live {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 0.6rem;
+	min-width: 12rem;
 }
 
 .topbar__stamp {
 	color: var(--text-dim);
-	font-size: 0.8rem;
+	font-family: var(--font-mono);
+	font-size: 0.76rem;
 	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
 }
 
-/* Blinks once per refresh so it is obvious the page is live. */
+/* Blinks once per refresh so it is obvious the page is live. Two rings rather than a
+   colour change: the dot itself stays put, and the halo is what carries the beat. */
 .topbar__pulse {
+	flex: none;
 	width: 7px;
 	height: 7px;
 	border-radius: 50%;
 	background: var(--border-strong);
-	transition: background 180ms ease;
+	transition: background 200ms ease, box-shadow 200ms ease;
 }
 
 .topbar__pulse.is-active {
 	background: var(--running);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--running) 28%, transparent);
 }
+
+/* ---------- page frame ---------- */
 
 /* Deliberately generous: the page holds tiles, not prose, so there is no line
    length to protect — capping it at a typical text width left half of a 2560-pixel
@@ -208,25 +346,25 @@ code {
 .page {
 	max-width: 2400px;
 	margin: 0 auto;
-	padding: 1.25rem;
+	padding: 1.1rem 1.25rem 2rem;
 }
 
 .footer {
 	max-width: 2400px;
 	margin: 0 auto;
-	padding: 0 1.25rem 2rem;
-	color: var(--text-dim);
-	font-size: 0.82rem;
+	padding: 1rem 1.25rem 2.5rem;
+	color: var(--text-faint);
+	font-size: 0.78rem;
 }
 
 /* ---------- banners and toast ---------- */
 
 .banner {
 	margin: 0 0 1rem;
-	padding: 0.65rem 0.85rem;
+	padding: 0.7rem 0.9rem;
 	border: 1px solid var(--border);
-	border-radius: var(--radius);
-	font-size: 0.9rem;
+	border-radius: var(--radius-sm);
+	font-size: 0.88rem;
 }
 
 .banner--warn {
@@ -252,11 +390,19 @@ code {
 	max-width: min(90vw, 46rem);
 	padding: 0.7rem 1rem;
 	border: 1px solid var(--border);
-	border-radius: var(--radius);
+	border-radius: var(--radius-sm);
 	background: var(--surface);
-	box-shadow: 0 6px 20px rgb(16 24 40 / 18%);
+	box-shadow: var(--shadow-2);
 	font-size: 0.9rem;
 	z-index: 50;
+	animation: toast-in 180ms ease-out;
+}
+
+@keyframes toast-in {
+	from {
+		opacity: 0;
+		transform: translate(-50%, 0.5rem);
+	}
 }
 
 .toast--ok {
@@ -269,28 +415,91 @@ code {
 	border-color: var(--err-border);
 }
 
-/* ---------- overview header ---------- */
+/* ---------- the host bar ---------- */
 
-.overview {
+/* What the page opens with: how much of this host is up, as a number and as a
+   picture. The picture is one cell per container in its state's colour, which is
+   worth more than the fraction beside it — 26 of 33 does not say whether the seven
+   are seven things somebody switched off or one service in a crash loop, and this
+   does, at a glance, before any card has been read.
+   It doubles as the legend for the cards below, whose left edge carries the same
+   four colours. */
+.hostbar {
 	display: flex;
-	align-items: baseline;
-	justify-content: space-between;
-	gap: 1rem;
+	align-items: center;
+	gap: 0.6rem 1rem;
+	flex-wrap: wrap;
 	margin-bottom: 1rem;
-	color: var(--text-dim);
-	font-size: 0.88rem;
 }
 
-.overview p {
+.hostbar__count {
 	margin: 0;
+	color: var(--text-dim);
+	font-size: 0.84rem;
+	white-space: nowrap;
 }
 
-.overview strong {
+.hostbar__count strong {
 	color: var(--text);
+	font-family: var(--font-mono);
+	font-size: 0.95rem;
+	font-weight: 700;
 }
 
+/* app.js lifts this into the top bar, next to the pulse. It stays in the markup for
+   the browser without JavaScript, which has nowhere else to learn how fresh the page
+   is. */
+.overview__stamp {
+	margin: 0;
+	color: var(--text-faint);
+	font-family: var(--font-mono);
+	font-size: 0.75rem;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.ribbon {
+	flex: 1 1 12rem;
+	display: flex;
+	gap: 2px;
+	height: 8px;
+	overflow: hidden;
+	border-radius: 999px;
+}
+
+/* Equal cells that give way together, down to a floor: a host with two hundred
+   containers still gets a bar rather than a scrollbar. */
+.ribbon__cell {
+	flex: 1 1 0;
+	min-width: 2px;
+	border-radius: 2px;
+	background: var(--stopped);
+}
+
+.ribbon__cell--running {
+	background: var(--running);
+}
+
+.ribbon__cell--transitional {
+	background: var(--transitional);
+}
+
+.ribbon__cell--error {
+	background: var(--error);
+}
+
+/* Idle is the absence of something, not a state with a colour of its own, so it is
+   the faintest thing in the bar. */
+.ribbon__cell--stopped {
+	background: color-mix(in srgb, var(--stopped) 45%, var(--surface-sunken));
+}
+
+/* Capped and centred: a full-width panel holding one short sentence reads as
+   something that failed to load rather than as an answer. */
 .empty {
-	padding: 2rem;
+	max-width: 32rem;
+	margin: 0 auto;
+	padding: 2.5rem 1.5rem;
 	text-align: center;
 	color: var(--text-dim);
 	background: var(--surface);
@@ -302,8 +511,8 @@ code {
 
 /* One slot per Compose project that holds more than one container, handed out in
    the order the projects are listed. Only the hue is stored per slot: the two themes
-   need very different lightness against white and against #1e2227, and one variable
-   beats keeping two palettes in step.
+   need very different lightness against white and against the dark surface, and one
+   variable beats keeping two palettes in step.
    Three constraints decide the numbers, in this order.
    Nothing from the arc that runs from red through amber to green (roughly 345 round
    through 0 to 165): those three are the container state on the left edge of every
@@ -330,42 +539,58 @@ code {
 
 .row--stacked,
 .stack {
-	--project: hsl(var(--project-hue) 58% 40%);
+	--project: hsl(var(--project-hue) 52% 42%);
 }
 
 @media (prefers-color-scheme: dark) {
 	.row--stacked,
 	.stack {
-		--project: hsl(var(--project-hue) 60% 66%);
+		--project: hsl(var(--project-hue) 58% 65%);
 	}
 }
 
 /* ---------- the stacks strip ---------- */
 
 /* Above the grid rather than as a heading over each project: this is the one place a
-   whole stack is started or stopped, and being one strip means it costs two lines
-   instead of a row per project. It doubles as the legend for the colours below it. */
+   whole stack is started or stopped, and being one strip means it costs two rows
+   instead of a row per project. It doubles as the legend for the colours below it.
+   A grid rather than a wrapping row, because the chips are of wildly different
+   widths — a project can be called n8n or fantasy-football-backend — and wrapping
+   them left a ragged edge that read as an accident. Equal columns line the actions
+   up underneath each other, which is also where the eye expects a control it is
+   about to click twice. */
 .stacks {
 	list-style: none;
-	display: flex;
-	flex-wrap: wrap;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
 	gap: 0.4rem;
-	margin: 0 0 1rem;
+	margin: 0 0 1.25rem;
 	padding: 0;
 }
 
 .stack {
+	position: relative;
 	display: flex;
 	align-items: center;
-	gap: 0.4rem;
+	gap: 0.5rem;
 	min-width: 0;
-	padding: 0.25rem 0.5rem;
+	padding: 0.3rem 0.35rem 0.3rem 0.75rem;
 	background: var(--surface);
-	border: 1px solid var(--border);
-	border-left: 3px solid var(--project);
-	border-radius: var(--radius);
-	box-shadow: var(--shadow);
-	font-size: 0.8rem;
+	border: 1px solid var(--hairline);
+	border-radius: var(--radius-sm);
+	box-shadow: var(--shadow-1);
+	font-size: 0.82rem;
+	overflow: hidden;
+}
+
+/* The project colour as a bar on the leading edge, the same shape the cards carry
+   it in, so chip and card are visibly the same fact. */
+.stack::before {
+	content: "";
+	position: absolute;
+	inset: 0 auto 0 0;
+	width: 3px;
+	background: var(--project);
 }
 
 .stack.is-busy {
@@ -373,8 +598,11 @@ code {
 	pointer-events: none;
 }
 
+/* The count belongs to the name, so the two stay together on the left and it is the
+   count that takes the slack — a name that grows into the free space leaves the
+   fraction floating in the middle of the chip, at a different place in every one. */
 .stack__name {
-	max-width: 14rem;
+	flex: 0 1 auto;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -384,7 +612,10 @@ code {
 
 .stack__count {
 	flex: none;
+	margin-right: auto;
 	color: var(--text-dim);
+	font-family: var(--font-mono);
+	font-size: 0.76rem;
 	font-variant-numeric: tabular-nums;
 }
 
@@ -409,68 +640,91 @@ code {
 	   to its widest unbreakable content, and one digest-pinned image reference is
 	   enough to push the whole page into sideways scrolling. */
 	grid-template-columns: minmax(0, 1fr);
-	gap: 0.6rem;
+	gap: 0.7rem;
 }
 
-/* 45rem is where two cards fit without the three action buttons wrapping. The
-   19rem minimum is what a card needs for those buttons plus "Unless stopped"; the
+/* 45rem is where two cards fit without the three actions wrapping. The 20rem
+   minimum is what a card needs for those actions beside the autostart control; the
    wider it is, the fewer columns a monitor gets for no gain in what a card says. */
 @media (min-width: 45rem) {
 	.rows {
-		grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
 	}
 }
 
 /* ---------- one container ---------- */
 
 .row {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
-	gap: 0.4rem;
-	padding: 0.7rem 0.85rem;
+	gap: 0.35rem;
+	padding: 0.7rem 0.85rem 0.55rem;
 	background: var(--surface);
-	border: 1px solid var(--border);
-	/* The state lives on this edge, which is why it is wider than the rest of the
-	   border. A colour is scannable across thirty cards in a way a small dot beside
-	   thirty names is not; the status text carries the same thing in words, so
-	   nothing depends on seeing the colour. */
-	border-left: 3px solid var(--stopped);
+	border: 1px solid var(--hairline);
 	border-radius: var(--radius);
-	box-shadow: var(--shadow);
+	box-shadow: var(--shadow-1);
+	/* So the state and project bars below are clipped by the corners rather than
+	   squaring them off. */
+	overflow: hidden;
+	transition: box-shadow 140ms ease, border-color 140ms ease;
+}
+
+.row:hover {
+	border-color: var(--border);
+	box-shadow: var(--shadow-2);
+}
+
+/* The state lives on this edge. A colour is scannable across thirty cards in a way
+   a small dot beside thirty names is not; the status text carries the same thing in
+   words, so nothing depends on seeing it. */
+.row::before {
+	content: "";
+	position: absolute;
+	inset: 0 auto 0 0;
+	width: 3px;
+	background: var(--state, var(--stopped));
 }
 
 .row--running {
-	border-left-color: var(--running);
+	--state: var(--running);
 }
 
 .row--transitional {
-	border-left-color: var(--transitional);
+	--state: var(--transitional);
 }
 
 .row--error {
-	border-left-color: var(--error);
+	--state: var(--error);
 }
 
 /* The stack this card belongs to, on the edge the state does not use. Cards of one
    project are already next to each other because that is how they are sorted; this is
    what makes that visible in a grid with no headings to cut it into sections. Only
    projects with more than one container get one — a colour tying a card to itself
-   would say nothing. */
-.row--stacked {
-	border-top: 3px solid var(--project);
+   would say nothing.
+   It starts where the state bar ends: the corner belongs to the state, which is the
+   thing somebody came to the page for. */
+.row--stacked::after {
+	content: "";
+	position: absolute;
+	inset: 0 0 auto 3px;
+	height: 3px;
+	background: var(--project);
 }
 
-/* Set after the state colour so it can only claim the other three edges — and it
-   gives the top one back to a stack colour, which says something this does not: there
-   is exactly one card that is docKontroler, and its own controls already say so. */
+/* There is exactly one card that is docKontroler, and a halo says so without
+   spending an edge on it — both edges already mean something else. */
 .row--self {
-	border-right-color: var(--accent);
-	border-bottom-color: var(--accent);
+	border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+	box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-1);
 }
 
-.row--self:not(.row--stacked) {
-	border-top-color: var(--accent);
+/* Restated, or the hover shadow below would drop the halo for as long as the cursor
+   is on the card. */
+.row--self:hover {
+	box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-2);
 }
 
 .row.is-busy {
@@ -493,18 +747,25 @@ code {
 	min-width: 0;
 	font-size: 1rem;
 	font-weight: 650;
-	letter-spacing: -0.01em;
+	letter-spacing: -0.012em;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
+/* Project and image, not the container name as well: a card is too narrow for
+   three truncated strings, and the container name of a Compose service is its
+   project and service with a number after it — which the first two already say.
+   Monospaced, because this is what the daemon reports rather than something the
+   interface wrote, and a tag or a digest is read character by character. */
 .row__sub {
 	display: flex;
-	gap: 0.5rem;
+	align-items: baseline;
+	gap: 0.4rem;
 	min-width: 0;
 	color: var(--text-dim);
-	font-size: 0.8rem;
+	font-family: var(--font-mono);
+	font-size: 0.74rem;
 }
 
 /* The Compose project this container belongs to. It replaces the per-project
@@ -517,15 +778,17 @@ code {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	color: var(--project, var(--text));
+	color: var(--project, var(--text-dim));
 	font-weight: 600;
 }
 
+/* A middle dot, not a slash: what follows is an image reference with slashes of its
+   own, and a second kind of separator in the same line reads as part of the path. */
 .row__project::after {
 	content: "·";
-	margin-left: 0.5rem;
+	margin-left: 0.4rem;
+	color: var(--text-faint);
 	font-weight: 400;
-	color: var(--text-dim);
 }
 
 /* min-width, because a flex item refuses to shrink below its content by default
@@ -539,14 +802,15 @@ code {
 }
 
 .tag {
-	padding: 0.05rem 0.35rem;
+	flex: none;
+	padding: 0.05rem 0.4rem;
 	border-radius: 999px;
-	background: var(--accent);
-	color: var(--accent-text);
-	font-size: 0.68rem;
-	font-weight: 600;
+	background: var(--accent-soft);
+	color: var(--accent);
+	font-size: 0.62rem;
+	font-weight: 700;
 	text-transform: uppercase;
-	letter-spacing: 0.04em;
+	letter-spacing: 0.06em;
 }
 
 /* "Up 3 hours" sits opposite the name. It gives way first when a card is narrow:
@@ -561,7 +825,18 @@ code {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	color: var(--text-dim);
-	font-size: 0.82rem;
+	font-size: 0.78rem;
+	text-align: right;
+}
+
+/* Coloured only where the state is not the ordinary one. A host where everything is
+   up stays grey and quiet; a container that is restarting or dead says so twice, on
+   its edge and in its own words, which is what makes it findable on a page of
+   thirty. */
+.row--transitional .row__status,
+.row--error .row__status {
+	color: var(--state);
+	font-weight: 600;
 }
 
 /* ---------- ports ---------- */
@@ -569,40 +844,44 @@ code {
 .row__ports {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 0.3rem;
+	gap: 0.25rem;
+	margin-top: 0.1rem;
 }
 
 .port {
 	display: inline-flex;
 	align-items: center;
-	gap: 0.2rem;
+	gap: 0.15rem;
 	padding: 0.1rem 0.45rem;
-	border: 1px solid var(--border);
-	border-radius: 999px;
+	border: 1px solid var(--hairline);
+	border-radius: var(--radius-xs);
 	background: var(--surface-alt);
 	color: var(--accent);
-	font-size: 0.76rem;
+	font-family: var(--font-mono);
+	font-size: 0.74rem;
 	font-variant-numeric: tabular-nums;
 	text-decoration: none;
 	white-space: nowrap;
+	transition: border-color 120ms ease, background 120ms ease;
 }
 
 /* Marks the chip as something to click, without needing a hover to find out. */
 a.port::after {
 	content: "↗";
 	font-size: 0.9em;
-	opacity: 0.7;
+	opacity: 0.6;
 }
 
 a.port:hover {
-	border-color: var(--accent);
-	text-decoration: underline;
+	border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+	background: var(--accent-soft);
 }
 
 /* A mapping that exists but has nothing behind it right now: a stopped
    container's configured binding, or a udp port a browser cannot open. */
 .port--idle {
 	color: var(--text-dim);
+	background: transparent;
 }
 
 .row__note {
@@ -611,97 +890,142 @@ a.port:hover {
 
 .hint {
 	color: var(--text-dim);
-	font-size: 0.76rem;
+	font-size: 0.74rem;
 	font-style: italic;
 }
 
-/* Three equal buttons across the card, so the same one is always in the same
-   place — the price of a misclick here is a stopped service. Quieter than the name
-   and the port above them: they are what you use once you have found the card. */
+/* ---------- the foot of a card ---------- */
+
+/* Everything you do to a container, on one line under a hairline. Pushed to the
+   bottom by the auto margin, which is what lines the controls of every card in a row
+   up with each other however much the cards above them have to say — a grid where
+   the buttons sit at a different height in every tile is the thing that made the old
+   page look unfinished.
+   Quieter than the name and the ports above it: these are what you use once you have
+   found the card, not what you are scanning for. */
+.row__foot {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.3rem 0.5rem;
+	margin-top: auto;
+	padding-top: 0.5rem;
+	border-top: 1px solid var(--hairline);
+}
+
+/* Three actions in a fixed order, so the same one is always in the same place — the
+   price of a misclick here is a stopped service. */
 .row__actions {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 0.3rem;
+	gap: 0.1rem;
+	margin-left: auto;
 }
 
-/* The basis has to stay under a third of the narrowest card, or the three buttons
-   wrap and every card in the grid grows a line it does not need. */
 .row__actions form {
 	margin: 0;
-	flex: 1 1 5rem;
 }
 
+/* One size for all three, filled or not, so the row reads as one control group
+   rather than three that happened to end up next to each other. */
 .row__actions .btn {
-	flex: 1 1 5rem;
-	width: 100%;
-	padding: 0.28rem 0.4rem;
+	padding: 0.28rem 0.5rem;
 	font-size: 0.8rem;
 }
 
 /* ---------- the restart policy ---------- */
 
 /* A labelled setting on one line, which is what it is. As a segmented control it
-   was three buttons per card, and thirty cards made a page of nothing but
-   controls. */
+   was three buttons per card, and thirty cards made a page of nothing but controls.
+   The select carries no border of its own until it is pointed at: on a page holding
+   thirty of them, the frames alone were louder than everything they were set
+   beside. The native arrow stays, so it is still visibly a control. */
 .policy {
 	display: flex;
 	align-items: center;
-	gap: 0.4rem;
+	gap: 0.3rem;
 	margin: 0;
 	min-width: 0;
 }
 
 .policy__label {
 	flex: none;
-	color: var(--text-dim);
-	font-size: 0.76rem;
+	color: var(--text-faint);
+	font-size: 0.66rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
 }
 
+/* Capped at what the longest of the three values needs, so the actions beside it stay
+   on the same line on a card at the grid's narrowest. */
 .policy__select {
-	flex: 1 1 auto;
 	min-width: 0;
-	padding: 0.16rem 0.3rem;
-	border: 1px solid var(--border);
-	border-radius: 5px;
-	background: var(--surface);
-	color: var(--text);
+	max-width: 7.5rem;
+	padding: 0.1rem 0.15rem;
+	border: 1px solid transparent;
+	border-radius: var(--radius-xs);
+	background: transparent;
+	color: var(--text-dim);
 	font: inherit;
-	font-size: 0.78rem;
+	font-size: 0.76rem;
 	cursor: pointer;
+	transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
 }
 
 .policy__select:hover {
-	border-color: var(--border-strong);
+	border-color: var(--border);
+	background: var(--surface-alt);
+	color: var(--text);
 }
 
 .policy__select:focus-visible {
 	outline: 2px solid var(--accent);
 	outline-offset: 1px;
+	color: var(--text);
 }
 
 /* ---------- buttons ---------- */
 
 .btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.35rem;
 	padding: 0.32rem 0.7rem;
-	border: 1px solid var(--border-strong);
-	border-radius: 5px;
+	border: 1px solid var(--border);
+	border-radius: var(--radius-xs);
 	background: var(--surface);
 	color: var(--text);
 	font: inherit;
 	font-size: 0.85rem;
 	cursor: pointer;
 	white-space: nowrap;
+	transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 
 .btn:hover:not(:disabled) {
 	background: var(--surface-alt);
+	border-color: var(--border-strong);
 }
 
 .btn:disabled {
-	opacity: 0.45;
+	opacity: 0.4;
 	cursor: not-allowed;
 }
 
+.btn:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+.btn__icon {
+	flex: none;
+	width: 14px;
+	height: 14px;
+}
+
+/* The one action a card offers when there is only one worth offering. */
 .btn--primary {
 	background: var(--accent);
 	border-color: var(--accent);
@@ -710,25 +1034,38 @@ a.port:hover {
 }
 
 .btn--primary:hover:not(:disabled) {
-	filter: brightness(1.08);
-	background: var(--accent);
+	background: color-mix(in srgb, var(--accent) 88%, var(--text));
+	border-color: color-mix(in srgb, var(--accent) 88%, var(--text));
 }
 
-.btn--danger {
+/* No frame until it is pointed at. This is what the actions on a card and on a
+   stack chip are: on a page of thirty cards, four outlined controls each turned the
+   interface into its own subject. */
+.btn--quiet {
+	padding: 0.28rem 0.45rem;
+	border-color: transparent;
+	background: transparent;
+	color: var(--text-dim);
+	font-size: 0.8rem;
+}
+
+.btn--quiet:hover:not(:disabled) {
+	background: var(--surface-alt);
+	border-color: var(--border);
+	color: var(--text);
+}
+
+/* Red on hover, not at rest: a page where every card shouts one red word teaches
+   you to stop seeing it. */
+.btn--danger:hover:not(:disabled) {
+	background: var(--danger-soft);
+	border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
 	color: var(--danger);
-	border-color: color-mix(in srgb, var(--danger) 45%, var(--border-strong));
 }
 
-.btn:focus-visible {
-	outline: 2px solid var(--accent);
-	outline-offset: 2px;
-}
-
-/* Only ever seen without JavaScript, where the policy form needs something to
-   submit it. */
 .btn--slim {
 	flex: none;
-	padding: 0.16rem 0.4rem;
+	padding: 0.2rem 0.45rem;
 	font-size: 0.76rem;
 }
 
@@ -737,21 +1074,54 @@ a.port:hover {
 /* Below the live host, not hidden from it: a stopped container is still part of what
    is on this machine, so the section starts open and only the fold is optional. */
 .stopped {
-	margin-top: 1.5rem;
+	margin-top: 1.75rem;
 }
 
 .stopped__summary {
 	display: flex;
 	align-items: center;
 	gap: 0.5rem;
-	width: fit-content;
 	padding: 0.2rem 0;
 	color: var(--text-dim);
-	font-size: 0.78rem;
-	font-weight: 650;
+	font-size: 0.72rem;
+	font-weight: 700;
 	text-transform: uppercase;
-	letter-spacing: 0.06em;
+	letter-spacing: 0.08em;
 	cursor: pointer;
+}
+
+.stopped__summary::-webkit-details-marker {
+	display: none;
+}
+
+.stopped__summary::marker {
+	content: "";
+}
+
+/* The fold, drawn rather than left to the browser's own triangle, which sits at a
+   different size and a different distance in every one of them. */
+.stopped__summary::before {
+	content: "";
+	flex: none;
+	width: 0.4rem;
+	height: 0.4rem;
+	border: 2px solid currentcolor;
+	border-width: 0 2px 2px 0;
+	transform: rotate(-45deg);
+	transition: transform 140ms ease;
+}
+
+.stopped[open] .stopped__summary::before {
+	transform: rotate(45deg);
+}
+
+/* A rule running out to the edge, so the section reads as a division of the page
+   rather than a label somebody left above the cards. */
+.stopped__summary::after {
+	content: "";
+	flex: 1 1 auto;
+	height: 1px;
+	background: var(--hairline);
 }
 
 .stopped__summary:hover {
@@ -759,28 +1129,89 @@ a.port:hover {
 }
 
 .stopped__count {
+	flex: none;
 	padding: 0.05rem 0.4rem;
-	border: 1px solid var(--border);
 	border-radius: 999px;
 	background: var(--surface-alt);
+	color: var(--text-dim);
+	font-family: var(--font-mono);
 	font-size: 0.72rem;
 	letter-spacing: 0;
 }
 
 .stopped[open] .stopped__summary {
-	margin-bottom: 0.6rem;
+	margin-bottom: 0.7rem;
+}
+
+/* A card down here is not raised off the page: it is part of the host, but it is not
+   doing anything, and a shadow would claim otherwise. Anything dead keeps its
+   surface, because that one is not idle, it failed. */
+.stopped .row:not(.row--error) {
+	background: color-mix(in srgb, var(--surface) 55%, var(--bg));
+	box-shadow: none;
+}
+
+.stopped .row:hover {
+	background: var(--surface);
+	box-shadow: var(--shadow-1);
 }
 
 /* ---------- narrow screens ---------- */
 
-/* The card layout above is already the phone layout, so this is only about the
-   frame around it. */
+/* The top bar keeps its three parts on one line as long as the filter box can be
+   useful there, and drops it onto a second row below that. The wordmark and the live
+   cluster stay where they are, so the bar grows by exactly one row and nothing
+   swaps places. */
+@media (max-width: 46rem) {
+	.topbar {
+		grid-template-columns: auto 1fr;
+		grid-template-areas:
+			"brand live"
+			"search search";
+		gap: 0.5rem 0.75rem;
+	}
+
+	.topbar__title {
+		grid-area: brand;
+	}
+
+	.topbar__live {
+		grid-area: live;
+		min-width: 0;
+	}
+
+	.search {
+		grid-area: search;
+		max-width: none;
+	}
+}
+
+/* Two words for the same button is one too many on a phone: the icon carries it,
+   and the accessible name is on the element itself. */
 @media (max-width: 30rem) {
 	.page {
-		padding: 0.9rem 0.75rem;
+		padding: 0.9rem 0.75rem 1.5rem;
 	}
 
 	.footer {
-		padding: 0 0.75rem 1.5rem;
+		padding: 0.75rem 0.75rem 1.5rem;
+	}
+
+	.topbar {
+		padding: 0.5rem 0.75rem;
+	}
+
+	.btn--icon-only-narrow .btn__label {
+		display: none;
+	}
+
+	.btn--icon-only-narrow {
+		padding-inline: 0.45rem;
+	}
+
+	/* The timestamp is the one thing here that can be recovered by looking at the
+	   pulse instead. */
+	.topbar__stamp {
+		display: none;
 	}
 }

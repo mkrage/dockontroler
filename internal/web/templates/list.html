@@ -1,8 +1,22 @@
 {{define "containers"}}
-<div class="overview">
-	<p class="overview__summary">
+{{/* How much of this host is up, as a number and as a picture. The picture is one
+     cell per container in the colour of its state, which says something the fraction
+     beside it cannot: 26 of 33 does not tell you whether the other seven are seven
+     things somebody switched off or one service in a crash loop. It is also the
+     legend for the left edge of the cards below, which carries the same colours.
+     Active first, then what is not running, so the bar is grouped the way the page
+     below it is. */}}
+<div class="hostbar">
+	<p class="hostbar__count">
 		<strong>{{.Running}}</strong> of <strong>{{.Total}}</strong> containers running
 	</p>
+	<div class="ribbon" role="img"
+	     aria-label="{{.Running}} of {{.Total}} containers running">
+		{{range .Active}}<span class="ribbon__cell ribbon__cell--{{.StateClass}}"
+			title="{{.Name}} — {{.Status}}"></span>{{end}}
+		{{- range .Stopped}}<span class="ribbon__cell ribbon__cell--{{.StateClass}}"
+			title="{{.Name}} — {{.Status}}"></span>{{end}}
+	</div>
 	<p class="overview__stamp">updated {{.GeneratedAt.Format "15:04:05"}}</p>
 </div>
 
@@ -30,11 +44,11 @@
 		{{/* Whole buttons rather than a conditional disabled attribute, as on the cards:
 		     a button that cannot do anything is not offered as a form at all. */}}
 		{{if eq .Active .Total}}
-		<button type="button" class="btn btn--slim" disabled
+		<button type="button" class="btn btn--quiet btn--slim" disabled
 		        title="every container in this stack is already up">Start all</button>
 		{{else}}
 		<form method="post" action="/stacks/{{.Project}}/start">
-			<button type="submit" class="btn btn--slim">Start all</button>
+			<button type="submit" class="btn btn--quiet btn--slim">Start all</button>
 		</form>
 		{{end}}
 
@@ -43,10 +57,10 @@
 		{{if .Active}}
 		<form method="post" action="/stacks/{{.Project}}/stop"
 		      data-confirm="Stop the whole {{.Project}} stack?&#10;&#10;{{.Active}} of {{.Total}} containers are running and will be stopped, the ones that depend on others first.{{if .HasSelf}}&#10;&#10;docKontroler itself belongs to this stack and will be left running.{{end}}">
-			<button type="submit" class="btn btn--slim btn--danger">Stop all</button>
+			<button type="submit" class="btn btn--quiet btn--slim btn--danger">Stop all</button>
 		</form>
 		{{else}}
-		<button type="button" class="btn btn--slim" disabled
+		<button type="button" class="btn btn--quiet btn--slim" disabled
 		        title="nothing in this stack is running">Stop all</button>
 		{{end}}
 	</li>
@@ -138,57 +152,66 @@
 
 	{{with .Note}}<p class="hint row__note">{{.}}</p>{{end}}
 
-	{{/* Active, not Running: a container in a restart loop is not started again, it
-	     is stopped — offering Start there would be the one button that cannot help.
-	     Docker stops a restarting or paused container happily; starting one fails. */}}
-	<div class="row__actions">
-		{{if .Active}}
-			{{if .IsSelf}}
-			<button type="button" class="btn" disabled title="docKontroler will not stop itself">Stop</button>
-			<button type="button" class="btn" disabled title="docKontroler will not restart itself">Restart</button>
-			{{else}}
-			<form method="post" action="/containers/{{.ID}}/stop">
-				<button type="submit" class="btn btn--danger">Stop</button>
-			</form>
-			<form method="post" action="/containers/{{.ID}}/restart">
-				<button type="submit" class="btn">Restart</button>
-			</form>
-			{{end}}
-		{{else}}
-			<form method="post" action="/containers/{{.ID}}/start">
-				<button type="submit" class="btn btn--primary">Start</button>
-			</form>
-			<button type="button" class="btn" disabled title="Container is not running">Restart</button>
-		{{end}}
-
-		{{if .CanRecreate}}
-		<form method="post" action="/containers/{{.ID}}/recreate"
-		      data-confirm="Recreate &quot;{{.Name}}&quot;?&#10;&#10;It is replaced by a new container built from {{.Image}} as it stands right now. Configuration, volumes and networks are carried over; if anything fails the original is restored.">
-			<button type="submit" class="btn">Recreate</button>
+	{{/* Everything you can do to this container, on one line at the foot of the card:
+	     what Docker should do with it by itself on the left, what you are doing to it
+	     now on the right. Separated from the card's contents by a rule, and pushed to
+	     the bottom by the stylesheet, so the controls of every card in a row line up
+	     however much the cards above them have to say. */}}
+	<div class="row__foot">
+		{{/* One select rather than three buttons: this is a setting with one value, and
+		     as a segmented control it put six controls on every card — a wall of them
+		     across a full page. It posts on change; the submit button is there for the
+		     browser without JavaScript, which cannot. */}}
+		<form method="post" action="/containers/{{.ID}}/policy" class="policy">
+			<label class="policy__label" for="policy-{{.ShortID}}">Autostart</label>
+			<select class="policy__select" id="policy-{{.ShortID}}" name="policy"
+			        title="When Docker starts this container by itself.{{with .PolicyFile}} Set restart: in {{.}} too, or the next rebuild from compose overwrites it.{{end}}">
+				<option value="no"{{if .PolicyIs "no"}} selected{{end}}>never</option>
+				<option value="unless-stopped"{{if .PolicyIs "unless-stopped"}} selected{{end}}>unless stopped</option>
+				<option value="always"{{if .PolicyIs "always"}} selected{{end}}>always</option>
+				{{if not (or (.PolicyIs "no") (.PolicyIs "unless-stopped") (.PolicyIs "always"))}}
+				{{/* A policy docKontroler does not offer, on-failure for instance. Shown so
+				     the control does not misreport it, and not selectable. */}}
+				<option value="" selected disabled>{{.Policy}}</option>
+				{{end}}
+			</select>
+			<noscript><button type="submit" class="btn btn--quiet btn--slim">Set</button></noscript>
 		</form>
-		{{else}}
-		<button type="button" class="btn" disabled title="Cannot recreate: {{if .Note}}{{.Note}}{{else}}not supported for this container{{end}}">Recreate</button>
-		{{end}}
-	</div>
 
-	{{/* One select rather than three buttons: this is a setting with one value, and
-	     as a segmented control it put six controls on every card — a wall of them
-	     across a full page. It posts on change; the submit button is there for the
-	     browser without JavaScript, which cannot. */}}
-	<form method="post" action="/containers/{{.ID}}/policy" class="policy">
-		<label class="policy__label" for="policy-{{.ShortID}}">Autostart</label>
-		<select class="policy__select" id="policy-{{.ShortID}}" name="policy"
-		        title="When Docker starts this container by itself.{{with .PolicyFile}} Set restart: in {{.}} too, or the next rebuild from compose overwrites it.{{end}}">
-			<option value="no"{{if .PolicyIs "no"}} selected{{end}}>never</option>
-			<option value="unless-stopped"{{if .PolicyIs "unless-stopped"}} selected{{end}}>unless stopped</option>
-			<option value="always"{{if .PolicyIs "always"}} selected{{end}}>always</option>
-			{{if not (or (.PolicyIs "no") (.PolicyIs "unless-stopped") (.PolicyIs "always"))}}
-			{{/* A policy docKontroler does not offer, on-failure for instance. Shown so
-			     the control does not misreport it, and not selectable. */}}
-			<option value="" selected disabled>{{.Policy}}</option>
+		{{/* Active, not Running: a container in a restart loop is not started again, it
+		     is stopped — offering Start there would be the one button that cannot help.
+		     Docker stops a restarting or paused container happily; starting one fails. */}}
+		<div class="row__actions">
+			{{if .Active}}
+				{{if .IsSelf}}
+				<button type="button" class="btn btn--quiet" disabled title="docKontroler will not stop itself">Stop</button>
+				<button type="button" class="btn btn--quiet" disabled title="docKontroler will not restart itself">Restart</button>
+				{{else}}
+				<form method="post" action="/containers/{{.ID}}/stop">
+					<button type="submit" class="btn btn--quiet btn--danger">Stop</button>
+				</form>
+				<form method="post" action="/containers/{{.ID}}/restart">
+					<button type="submit" class="btn btn--quiet">Restart</button>
+				</form>
+				{{end}}
+			{{else}}
+				{{/* The one card where an action is the point rather than an option, so it
+				     is the one button on the page that is filled in. */}}
+				<form method="post" action="/containers/{{.ID}}/start">
+					<button type="submit" class="btn btn--primary">Start</button>
+				</form>
+				<button type="button" class="btn btn--quiet" disabled title="Container is not running">Restart</button>
 			{{end}}
-		</select>
-		<noscript><button type="submit" class="btn btn--slim">Set</button></noscript>
-	</form>
+
+			{{if .CanRecreate}}
+			<form method="post" action="/containers/{{.ID}}/recreate"
+			      data-confirm="Recreate &quot;{{.Name}}&quot;?&#10;&#10;It is replaced by a new container built from {{.Image}} as it stands right now. Configuration, volumes and networks are carried over; if anything fails the original is restored.">
+				<button type="submit" class="btn btn--quiet">Recreate</button>
+			</form>
+			{{else}}
+			<button type="button" class="btn btn--quiet" disabled title="Cannot recreate: {{if .Note}}{{.Note}}{{else}}not supported for this container{{end}}">Recreate</button>
+			{{end}}
+		</div>
+	</div>
 </li>
 {{end}}

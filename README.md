@@ -133,15 +133,28 @@ is one static binary with the templates compiled in.
 ## The overview
 
 Each container is a card: name and state on the first line, then the image, its
-ports, the three actions and the autostart setting. How many cards sit beside each
-other is left to the browser — one per line on a phone, four on a laptop, seven on a
-2560-pixel monitor. There is no separate mobile page and no client detection; it is
-the same HTML either way.
+ports, and at the foot of the card the autostart setting and the three actions. How
+many cards sit beside each other is left to the browser — one per line on a phone,
+four on a laptop, seven on a 2560-pixel monitor. There is no separate mobile page and
+no client detection; it is the same HTML either way.
 
 **The state is the card's left edge** — green running, amber restarting, red dead,
 grey stopped. A colour is scannable across thirty cards in a way a dot beside thirty
 names is not, and nothing depends on seeing it: the status text says the same thing
-in Docker's own words.
+in Docker's own words, and it takes the state's colour where the state is not the
+ordinary one, so a host where everything is up stays quiet.
+
+The controls are deliberately the quietest thing on a card. They carry no frame until
+you point at one, and `Stop` only turns red under the cursor: four framed controls on
+each of thirty cards made a page about its own buttons rather than about the host. The
+one exception is `Start` on a container that is down, which is the only filled button
+on the page — there is nothing else to do to a stopped container.
+
+**The strip above the grid is the host at a glance**: one cell per container in the
+colour of its state, next to the count. `26 of 33` does not say whether the other
+seven are seven things you switched off or one service in a crash loop, and the strip
+does — before a single card has been read. It is also where the four state colours are
+explained, so the edges below need no legend.
 
 **What is not running has its own section** below the grid, foldable but not folded:
 a stopped container is still part of what is on this host, and a page that hides half
@@ -182,7 +195,7 @@ here reads your yaml. Containers created by Compose v1 do not have it and fall b
 service-name order. Nor is it a `compose up`: **nothing is created or removed**, only
 started and stopped, and a service scaled to zero stays at zero.
 
-**The filter box** in the top right narrows the page as you type — container name,
+**The filter box** in the top bar narrows the page as you type — container name,
 Compose project, service, image or port number, and several words at once (`blog db`)
 match in any order. A stack's chip stays as long as one of its containers is still
 shown, so the control does not disappear just as you found what it belongs to. `/`
@@ -190,8 +203,14 @@ jumps to the box, `Escape` clears it.
 
 It filters in the browser, on a list that is already there, which is why it answers
 between keystrokes and why it is not offered at all without JavaScript. The counts
-above the grid keep describing the host rather than the filtered view: they answer
-"what is running here", which is not a question the filter changes.
+and the strip above the grid keep describing the host rather than the filtered view:
+they answer "what is running here", which is not a question the filter changes.
+
+The bar the box sits in is a three-track grid — wordmark, filter, freshness — and that
+is not an implementation detail: as a flex row, a filter box wide enough to be useful
+pushed the button beside it onto a second line, which made the header taller and moved
+the whole page down for a box nobody had typed in yet. Nothing in the bar can change
+its own height now.
 
 **Ports** are the host ports, with the container port after an arrow when the two
 differ (`8080 → 80`). A tcp port on a running container is a link, and it is built

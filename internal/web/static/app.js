@@ -261,8 +261,10 @@
 
 	if (filterBox) {
 		// Only now does the box exist as far as the user is concerned; see the template
-		// for why it is rendered hidden.
-		filterBox.hidden = false;
+		// for why it is rendered hidden. What is unhidden is the whole box rather than
+		// the field alone, or its magnifier and its key hint would sit there without it.
+		var searchBox = filterBox.closest(".search") || filterBox;
+		searchBox.hidden = false;
 		filterBox.addEventListener("input", applyFilter);
 		// A type=search field fires this on its own clear button and on Escape in some
 		// browsers, and nothing at all in others — hence both this and the key below.
@@ -311,6 +313,14 @@
 				stamp.textContent = currentStamp.textContent.trim();
 			}
 			currentStamp.remove();
+			// And out of the page as well, not only out of the copy the signature is
+			// taken from: the timestamp is in the header now, and leaving the one in the
+			// list until the first poll happens to remove it showed it twice for as long
+			// as the refresh interval.
+			var pageStamp = containers.querySelector(".overview__stamp");
+			if (pageStamp) {
+				pageStamp.remove();
+			}
 		}
 		lastSignature = current.innerHTML;
 	})();
