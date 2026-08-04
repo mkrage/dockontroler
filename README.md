@@ -443,23 +443,31 @@ Neither Go nor anything else needs to be installed — the toolchain runs in a
 throwaway container:
 
 ```bash
-# format, vet and run the full test suite
-#
-# golang:1 rather than golang:1-alpine: -race needs cgo, and the Alpine image has no
-# C compiler, so it fails there with "-race requires cgo".
-docker run --rm -v "$PWD":/src -w /src golang:1 \
-	sh -c 'gofmt -w . && go vet ./... && go test -race ./...'
+# check formatting, vet and run the full test suite
+./test.sh
 
-# see what the formatter changed
+# without the race detector, on the small image: a few hundred megabytes instead of
+# a gigabyte, and a much faster run on a Pi
+RACE=0 ./test.sh
+
+# fix the formatting the check complains about
+docker run --rm -v "$PWD":/src -w /src golang:1-alpine gofmt -w .
 git diff
 
-# build and run
+# build and run — ./test.sh runs first, and a failure stops the build
 ./rebuild.sh && docker compose up -d && docker compose logs -f
 ```
 
-The tests need no Docker daemon. `internal/manager` runs against a small
-simulator of the Engine API, so even the recreate logic — including every rollback
-path — is exercised in-process.
+The tests need no Docker daemon and no network. `internal/manager` runs against a
+small simulator of the Engine API, so even the recreate logic — including every
+rollback path — is exercised in-process, and nothing is created on the host running
+them. That is what makes `./test.sh` safe to run on the home server itself.
+
+`./rebuild.sh` runs it before it builds anything, because the second half of that
+script stops and removes the running container: the failure mode without the gate is
+not a missing image, it is docKontroler being down while you deploy whatever the
+build produced. `SKIP_TESTS=1 ./rebuild.sh` skips it for a rebuild that has nothing
+to do with the code, a base image bump for instance.
 
 If you do have Go locally, `go run .` works directly; without a mounted socket it
 exits with a clear message about the daemon.

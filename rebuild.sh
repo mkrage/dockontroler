@@ -9,6 +9,18 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# Tests before the build, because of what the second half of this script does: it
+# stops and removes the running container. So the failure mode here is not "no new
+# image", it is "docKontroler is down and you are about to deploy whatever came out
+# of the build" — and a compiler is happy with plenty of code that does the wrong
+# thing. They need no daemon and no network; see test.sh.
+#
+# SKIP_TESTS=1 when you are rebuilding for a reason that has nothing to do with the
+# code, a base image bump for instance, and do not want to wait for them.
+if [[ "${SKIP_TESTS:-0}" != 1 ]]; then
+	./test.sh
+fi
+
 # Goes into the binary through -ldflags and shows up in the first log line. Without
 # git, or without tags, it stays "dev" rather than failing the build.
 VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo dev)"
