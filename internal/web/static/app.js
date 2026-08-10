@@ -57,19 +57,28 @@
 		}, 300);
 	}
 
-	// null when there is no such section, which is not the same as a folded one: a
-	// section that has just appeared — the first container to stop — has to keep the
-	// state the server rendered it with instead of inheriting "folded" from its own
-	// absence a moment ago.
-	function stoppedIsOpen() {
-		var section = containers.querySelector(".stopped");
-		return section ? section.open : null;
+	// Which of the two sections are folded right now, keyed by their data-fold name.
+	//
+	// A section that is not on the page at all is left out rather than recorded as
+	// folded: one that has just appeared — the first container to stop — has to keep
+	// the state the server rendered it with instead of inheriting "folded" from its
+	// own absence a moment ago.
+	function foldState() {
+		var state = {};
+		var folds = containers.querySelectorAll(".fold");
+		for (var i = 0; i < folds.length; i++) {
+			state[folds[i].dataset.fold] = folds[i].open;
+		}
+		return state;
 	}
 
-	function setStoppedOpen(open) {
-		var section = containers.querySelector(".stopped");
-		if (section && open !== null) {
-			section.open = open;
+	function restoreFolds(state) {
+		var folds = containers.querySelectorAll(".fold");
+		for (var i = 0; i < folds.length; i++) {
+			var was = state[folds[i].dataset.fold];
+			if (was !== undefined) {
+				folds[i].open = was;
+			}
 		}
 	}
 
@@ -121,7 +130,7 @@
 
 		// A list, a section or the strip with nothing left in it goes as well, or the
 		// page keeps their headings and gaps around nothing.
-		var groups = containers.querySelectorAll(".stacks, .rows, .stopped");
+		var groups = containers.querySelectorAll(".stacks, .rows, .fold");
 		for (var k = 0; k < groups.length; k++) {
 			groups[k].hidden = !groups[k].querySelector(".row:not([hidden]), .stack:not([hidden])");
 		}
@@ -165,13 +174,13 @@
 
 			var signature = incoming.innerHTML;
 			if (signature !== lastSignature) {
-				// The refreshed markup arrives with the "not running" section in the
-				// state the server renders it in, so reinserting it would undo a fold
-				// the user just made. Comparing incoming markup against incoming markup
-				// means this survives every later poll too.
-				var wasOpen = stoppedIsOpen();
+				// The refreshed markup arrives with both sections in the state the
+				// server renders them in, so reinserting it would undo a fold the user
+				// just made. Comparing incoming markup against incoming markup means
+				// this survives every later poll too.
+				var folds = foldState();
 				containers.innerHTML = signature;
-				setStoppedOpen(wasOpen);
+				restoreFolds(folds);
 				// The markup arrives unfiltered — the server knows nothing about the box.
 				applyFilter();
 				lastSignature = signature;

@@ -74,10 +74,22 @@
      wide monitor ends up showing one card per line. The containers of a project
      stay next to each other because that is how they are sorted, and the cards of a
      stack share a colour on their top edge. */}}
+{{/* Foldable like the section below it: whoever wants to see what is *not* running
+     wants the thirty cards that are out of the way just as much as the other way
+     round, and a section that can only be folded one way makes the smaller half of
+     the page the only one you can put away.
+     "active" rather than "running", because a restarting container is counted here
+     and it is not running — the fraction at the top of the page is the one that
+     answers that. */}}
 {{with .Active}}
-<ul class="rows">
-	{{range .}}{{template "card" .}}{{end}}
-</ul>
+<details class="fold" data-fold="active" open>
+	<summary class="fold__summary">
+		active <span class="fold__count">{{len .}}</span>
+	</summary>
+	<ul class="rows">
+		{{range .}}{{template "card" .}}{{end}}
+	</ul>
+</details>
 {{end}}
 
 {{/* What is not running keeps its own section below the live host, because a
@@ -86,9 +98,9 @@
      behind a click makes you click it every time. Foldable, not folded.
      Anything restarting stays in the grid above: a crash loop is not idle. */}}
 {{with .Stopped}}
-<details class="stopped" open>
-	<summary class="stopped__summary">
-		not running <span class="stopped__count">{{len .}}</span>
+<details class="fold fold--stopped" data-fold="stopped" open>
+	<summary class="fold__summary">
+		not running <span class="fold__count">{{len .}}</span>
 	</summary>
 	<ul class="rows">
 		{{range .}}{{template "card" .}}{{end}}

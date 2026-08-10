@@ -355,14 +355,14 @@ func TestStoppedContainersGetTheirOwnSection(t *testing.T) {
 	handler, engine := newTestServer(t)
 
 	body := get(t, handler, "/")
-	if strings.Contains(body, `class="stopped"`) {
+	if strings.Contains(body, `data-fold="stopped"`) {
 		t.Error("the not-running section is rendered while everything is running")
 	}
 
 	engine.setRunning(testContainerID, false)
 	body = get(t, handler, "/")
 
-	section := strings.Index(body, `class="stopped"`)
+	section := strings.Index(body, `data-fold="stopped"`)
 	if section < 0 {
 		t.Fatalf("no section for the stopped container:\n%s", body)
 	}
@@ -373,8 +373,23 @@ func TestStoppedContainersGetTheirOwnSection(t *testing.T) {
 	if card := strings.Index(body, `data-name="blog-web-1"`); card < section {
 		t.Error("the stopped container is in the grid above instead of the section below")
 	}
-	if !strings.Contains(body, `class="stopped" open`) {
+	if !strings.Contains(body, `data-fold="stopped" open`) {
 		t.Error("the section starts folded, so half the host is a click away on every load")
+	}
+}
+
+// TestBothSectionsFoldTheSameWay: the section for what is up is a section like the one
+// below it, not a bare grid — whoever wants to see what is not running wants the cards
+// above out of the way just as much as the other way round. Both start open.
+func TestBothSectionsFoldTheSameWay(t *testing.T) {
+	handler, engine := newTestServer(t)
+	engine.setRunning(testContainerID, false)
+
+	body := get(t, handler, "/")
+	for _, want := range []string{`data-fold="active" open`, `data-fold="stopped" open`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("no foldable section rendered as %s:\n%s", want, body)
+		}
 	}
 }
 

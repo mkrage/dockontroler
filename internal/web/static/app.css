@@ -1148,15 +1148,23 @@ a.port:hover {
 	font-size: 0.76rem;
 }
 
-/* ---------- what is not running ---------- */
+/* ---------- the two sections of the list ---------- */
 
-/* Below the live host, not hidden from it: a stopped container is still part of what
-   is on this machine, so the section starts open and only the fold is optional. */
-.stopped {
+/* Both halves of the list are the same thing — a labelled section you may put away —
+   so they are one block here and differ only in the two rules at the end. Both start
+   open: what is on this host is what the page is for, and one that hides half its
+   contents behind a click makes you click it every time. Foldable, not folded. */
+.fold {
+	margin-top: 1.25rem;
+}
+
+/* More air above the second one than between a section and its own cards, so the
+   division of the page is the wider gap of the two. */
+.fold--stopped {
 	margin-top: 1.75rem;
 }
 
-.stopped__summary {
+.fold__summary {
 	display: flex;
 	align-items: center;
 	gap: 0.5rem;
@@ -1169,17 +1177,17 @@ a.port:hover {
 	cursor: pointer;
 }
 
-.stopped__summary::-webkit-details-marker {
+.fold__summary::-webkit-details-marker {
 	display: none;
 }
 
-.stopped__summary::marker {
+.fold__summary::marker {
 	content: "";
 }
 
 /* The fold, drawn rather than left to the browser's own triangle, which sits at a
    different size and a different distance in every one of them. */
-.stopped__summary::before {
+.fold__summary::before {
 	content: "";
 	flex: none;
 	width: 0.4rem;
@@ -1190,24 +1198,24 @@ a.port:hover {
 	transition: transform 140ms ease;
 }
 
-.stopped[open] .stopped__summary::before {
+.fold[open] .fold__summary::before {
 	transform: rotate(45deg);
 }
 
 /* A rule running out to the edge, so the section reads as a division of the page
    rather than a label somebody left above the cards. */
-.stopped__summary::after {
+.fold__summary::after {
 	content: "";
 	flex: 1 1 auto;
 	height: 1px;
 	background: var(--hairline);
 }
 
-.stopped__summary:hover {
+.fold__summary:hover {
 	color: var(--text);
 }
 
-.stopped__count {
+.fold__count {
 	flex: none;
 	padding: 0.05rem 0.4rem;
 	border-radius: 999px;
@@ -1218,19 +1226,19 @@ a.port:hover {
 	letter-spacing: 0;
 }
 
-.stopped[open] .stopped__summary {
+.fold[open] .fold__summary {
 	margin-bottom: 0.7rem;
 }
 
 /* A card down here is not raised off the page: it is part of the host, but it is not
    doing anything, and a shadow would claim otherwise. Anything dead keeps its
    surface, because that one is not idle, it failed. */
-.stopped .row:not(.row--error) {
+.fold--stopped .row:not(.row--error) {
 	background: color-mix(in srgb, var(--surface) 55%, var(--bg));
 	box-shadow: none;
 }
 
-.stopped .row:hover {
+.fold--stopped .row:hover {
 	background: var(--surface);
 	box-shadow: var(--shadow-1);
 }

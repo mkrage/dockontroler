@@ -166,9 +166,11 @@ seven are seven things you switched off or one service in a crash loop, and the 
 does — before a single card has been read. It is also where the four state colours are
 explained, so the edges below need no legend.
 
-**What is not running has its own section** below the grid, foldable but not folded:
-a stopped container is still part of what is on this host, and a page that hides half
-its contents behind a click makes you click it every time. A container *restarting*
+**The list is two sections, `active` and `not running`, both foldable and neither
+folded**: what is on this host is what the page is for, and one that hides half its
+contents behind a click makes you click it every time. Either half can be put away,
+because whoever came to look at what is *not* running wants the thirty cards above out
+of the way just as much as the other way round. A container *restarting*
 stays in the grid: a crash loop is the one thing on the page that wants attention,
 and it is offered **Stop** rather than Start, because Docker cannot start what is
 already trying.
