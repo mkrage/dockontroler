@@ -121,6 +121,84 @@ func TestStopStackReversesTheOrder(t *testing.T) {
 	}
 }
 
+// TestRestartStackGoesForwardsAndTouchesOnlyWhatIsUp: a restart is a start's order,
+// not a stop's — the database has to be back before the thing that talks to it. And it
+// restarts what is running rather than bringing the stack up: the button beside it does
+// that, and a "restart" that quietly starts three containers nobody asked for is the
+// wrong surprise from a button whose neighbour is Stop all.
+func TestRestartStackGoesForwardsAndTouchesOnlyWhatIsUp(t *testing.T) {
+	engine := newFakeEngine()
+	stackMemberContainer(engine, "aaaa11110000", "blog", "web", true, "db:service_started:true")
+	stackMemberContainer(engine, "bbbb22220000", "blog", "db", true, "")
+	stackMemberContainer(engine, "cccc33330000", "blog", "worker", false, "")
+
+	containers := newTestManager(t, engine, "")
+
+	result, err := containers.RestartStack(context.Background(), "blog")
+	if err != nil {
+		t.Fatalf("RestartStack: %v", err)
+	}
+	if result.Changed != 2 || result.Total != 3 {
+		t.Errorf("Changed=%d Total=%d, want the two running containers of three", result.Changed, result.Total)
+	}
+
+	restarted := touched(engine, "restart")
+	want := []string{"blog-db-1", "blog-web-1"}
+	if strings.Join(restarted, ",") != strings.Join(want, ",") {
+		t.Errorf("restart order %v, want %v", restarted, want)
+	}
+	if started := touched(engine, "start"); len(started) != 0 {
+		t.Errorf("started %v, want a stopped container left alone", started)
+	}
+	if engine.byName("blog-worker-1").Running {
+		t.Error("the container that was down was started by a restart")
+	}
+	if want := "Stack blog: 2 of 3 containers restarted."; result.Message() != want {
+		t.Errorf("Message() = %q, want %q", result.Message(), want)
+	}
+}
+
+// TestRestartStackWithNothingRunning: "already restarted" is not a state anything can
+// be in, so the outcome has to say what actually happened.
+func TestRestartStackWithNothingRunning(t *testing.T) {
+	engine := newFakeEngine()
+	stackMemberContainer(engine, "aaaa11110000", "blog", "web", false, "")
+
+	containers := newTestManager(t, engine, "")
+
+	result, err := containers.RestartStack(context.Background(), "blog")
+	if err != nil {
+		t.Fatalf("RestartStack: %v", err)
+	}
+	if result.Changed != 0 {
+		t.Errorf("Changed = %d, want nothing touched", result.Changed)
+	}
+	if want := "Stack blog has nothing running to restart."; result.Message() != want {
+		t.Errorf("Message() = %q, want %q", result.Message(), want)
+	}
+}
+
+// TestRestartStackLeavesDockontrolerAlone: restarting the stack it lives in would kill
+// the request half-way through, exactly as stopping it would.
+func TestRestartStackLeavesDockontrolerAlone(t *testing.T) {
+	engine := newFakeEngine()
+	self := stackMemberContainer(engine, "5e1f00000000", "tools", "dockontroler", true, "")
+	stackMemberContainer(engine, "aaaa11110000", "tools", "watchtower", true, "")
+
+	containers := newTestManager(t, engine, self.ID)
+
+	result, err := containers.RestartStack(context.Background(), "tools")
+	if err != nil {
+		t.Fatalf("RestartStack: %v", err)
+	}
+	if restarted := touched(engine, "restart"); len(restarted) != 1 || restarted[0] != "tools-watchtower-1" {
+		t.Errorf("restarted %v, want only the other container", restarted)
+	}
+	if len(result.Notes) != 1 || !strings.Contains(result.Notes[0], "docKontroler") {
+		t.Errorf("Notes = %q, want one saying docKontroler was left alone", result.Notes)
+	}
+}
+
 // TestStopStackLeavesDockontrolerRunning: stopping the stack docKontroler happens to
 // live in would kill the request half-way through and leave the rest of the stack
 // wherever it had got to. Everything else still goes down, and the user is told.

@@ -281,7 +281,8 @@ func (s *Server) handleAction(action string) http.HandlerFunc {
 	}
 }
 
-// handleStack builds the handler for starting or stopping a whole Compose project.
+// handleStack builds the handler for starting, stopping or restarting a whole
+// Compose project.
 //
 // It reports partial outcomes rather than only success or failure: a stack where
 // one container refused to stop is neither, and "3 stopped, 1 failed" is the only
@@ -294,10 +295,13 @@ func (s *Server) handleStack(action string) http.HandlerFunc {
 			result manager.StackResult
 			err    error
 		)
-		if action == "start" {
-			result, err = s.manager.StartStack(r.Context(), project)
-		} else {
+		switch action {
+		case "stop":
 			result, err = s.manager.StopStack(r.Context(), project)
+		case "restart":
+			result, err = s.manager.RestartStack(r.Context(), project)
+		default:
+			result, err = s.manager.StartStack(r.Context(), project)
 		}
 
 		s.finishAction(w, r, "stack "+action, project,

@@ -42,6 +42,9 @@ type stubContainer struct {
 	image   string
 	running bool
 	policy  string
+	// restarts counts how often the Engine was asked to restart this one, which is the
+	// only way to tell a restart from a container that was already up.
+	restarts int
 	// publishes marks the one container that maps a host port, which is what the
 	// port links are rendered from.
 	publishes bool
@@ -104,6 +107,11 @@ func (s *stubEngine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		container.running = false
 		w.WriteHeader(http.StatusNoContent)
 
+	case "restart":
+		container.restarts++
+		container.running = true
+		w.WriteHeader(http.StatusNoContent)
+
 	case "update":
 		var body struct {
 			RestartPolicy docker.RestartPolicy `json:"RestartPolicy"`
@@ -141,6 +149,15 @@ func (s *stubEngine) isRunning(id string) bool {
 	defer s.mu.Unlock()
 	container := s.findLocked(id)
 	return container != nil && container.running
+}
+
+func (s *stubEngine) restartsOf(id string) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if container := s.findLocked(id); container != nil {
+		return container.restarts
+	}
+	return 0
 }
 
 func (s *stubEngine) policyOf(id string) string {
@@ -566,6 +583,29 @@ func TestFragmentIsJustTheList(t *testing.T) {
 	}
 }
 
+// TestRestartStackReachesEveryRunningContainer: the operation the page did not have,
+// and it must reach the whole stack rather than the container somebody happened to aim
+// at.
+func TestRestartStackReachesEveryRunningContainer(t *testing.T) {
+	handler, engine := newTestServer(t)
+
+	request := httptest.NewRequest(http.MethodPost, "/stacks/blog/restart", nil)
+	request.Header.Set("Accept", "application/json")
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200. body: %s", recorder.Code, recorder.Body)
+	}
+	if engine.restartsOf(testContainerID) != 1 || engine.restartsOf(testDBID) != 1 {
+		t.Errorf("restarts: web=%d db=%d, want one each",
+			engine.restartsOf(testContainerID), engine.restartsOf(testDBID))
+	}
+	if !engine.isRunning(testContainerID) || !engine.isRunning(testDBID) {
+		t.Error("the stack did not come back up")
+	}
+}
+
 func TestAPIContainersReturnsJSON(t *testing.T) {
 	handler, _ := newTestServer(t)
 
@@ -761,6 +801,7 @@ func TestRoutingBoundaries(t *testing.T) {
 		{http.MethodGet, "/containers/" + testContainerID + "/stop", http.StatusMethodNotAllowed},
 		{http.MethodGet, "/stacks/blog/stop", http.StatusMethodNotAllowed},
 		{http.MethodGet, "/stacks/blog/start", http.StatusMethodNotAllowed},
+		{http.MethodGet, "/stacks/blog/restart", http.StatusMethodNotAllowed},
 	}
 	for _, testCase := range cases {
 		recorder := httptest.NewRecorder()

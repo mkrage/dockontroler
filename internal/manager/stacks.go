@@ -10,14 +10,16 @@ import (
 	"github.com/mkrage/dockontroler/internal/docker"
 )
 
-// The two things a stack operation can be. Spelled out rather than a bool, because
-// the direction decides both the order the stack is walked in and every message.
+// The three things a stack operation can be. Spelled out rather than a bool,
+// because the direction decides both the order the stack is walked in and every
+// message.
 const (
-	stackStart = "start"
-	stackStop  = "stop"
+	stackStart   = "start"
+	stackStop    = "stop"
+	stackRestart = "restart"
 )
 
-// StackResult reports what a project-wide start or stop did.
+// StackResult reports what a project-wide start, stop or restart did.
 type StackResult struct {
 	Project string
 	// Action is stackStart or stackStop.
@@ -35,17 +37,27 @@ type StackResult struct {
 
 // Message is the one-line outcome, ready for a toast or a chat reply.
 func (r StackResult) Message() string {
-	done, settled := "started", "running"
-	if r.Action == stackStop {
-		done, settled = "stopped", "stopped"
+	done := "started"
+	// What to say when the operation found nothing to do. A restart needs its own
+	// wording: "already restarted" is not a state anything can be in, and what
+	// actually happened is that there was nothing running to restart.
+	settled := fmt.Sprintf("Stack %s was already running.", r.Project)
+	switch r.Action {
+	case stackStop:
+		done = "stopped"
+		settled = fmt.Sprintf("Stack %s was already stopped.", r.Project)
+	case stackRestart:
+		done = "restarted"
+		settled = fmt.Sprintf("Stack %s has nothing running to restart.", r.Project)
 	}
+
 	switch {
 	case r.Changed == 0 && len(r.Notes) > 0:
 		// Something was deliberately left alone, so "already running" would be a
 		// claim about it that the notes contradict.
 		return fmt.Sprintf("Nothing to %s in stack %s.", r.Action, r.Project)
 	case r.Changed == 0:
-		return fmt.Sprintf("Stack %s was already %s.", r.Project, settled)
+		return settled
 	case r.Changed == r.Total:
 		return fmt.Sprintf("Stack %s %s, all %d containers.", r.Project, done, r.Total)
 	default:
@@ -68,6 +80,18 @@ func (m *Manager) StartStack(ctx context.Context, project string) (StackResult, 
 // the rest of the stack in whatever state it had reached.
 func (m *Manager) StopStack(ctx context.Context, project string) (StackResult, error) {
 	return m.actOnStack(ctx, project, stackStop)
+}
+
+// RestartStack restarts every running container of a Compose project, dependencies
+// first — the operation after a config change, where the alternative is stopping the
+// stack and starting it again and hoping nothing was missed in between.
+//
+// It restarts what is up and leaves what is down alone. Bringing a stopped container
+// up is what the button next to this one does, and a "restart" that quietly starts
+// three containers nobody asked for is the wrong kind of surprise for a button whose
+// neighbour is Stop all.
+func (m *Manager) RestartStack(ctx context.Context, project string) (StackResult, error) {
+	return m.actOnStack(ctx, project, stackRestart)
 }
 
 // stackKey is the busy-set key for a whole project. Container keys are 64-character
@@ -97,6 +121,8 @@ func (m *Manager) actOnStack(ctx context.Context, project, action string) (Stack
 	}
 	defer release()
 
+	// Only a stop walks the graph backwards. A restart goes the way a start does:
+	// the database comes back before the thing that talks to it.
 	order := orderMembers(members, action == stackStop)
 	log := m.log.With("stack", project, "action", action)
 	log.Info("stack operation starting", "containers", len(order))
@@ -127,9 +153,12 @@ func (m *Manager) actOnStack(ctx context.Context, project, action string) (Stack
 			continue
 		}
 		var opErr error
-		if action == stackStop {
+		switch action {
+		case stackStop:
 			opErr = m.docker.StopContainer(opCtx, member.id, m.stopTimeout)
-		} else {
+		case stackRestart:
+			opErr = m.docker.RestartContainer(opCtx, member.id, m.stopTimeout)
+		default:
 			opErr = m.docker.StartContainer(opCtx, member.id)
 		}
 		memberRelease()
@@ -151,8 +180,11 @@ func (m *Manager) actOnStack(ctx context.Context, project, action string) (Stack
 		// Deliberately not phrased as "3 of 7", which would count the containers that
 		// were already in the requested state as failures.
 		done := "started"
-		if action == stackStop {
+		switch action {
+		case stackStop:
 			done = "stopped"
+		case stackRestart:
+			done = "restarted"
 		}
 		return result, fmt.Errorf("stack %s: %d %s, %d failed; %s",
 			project, result.Changed, done, len(failures), strings.Join(failures, "; "))
@@ -194,6 +226,22 @@ type stackMember struct {
 // out loud. A container that is already in the requested state is skipped silently:
 // that is the normal case, not something to report.
 func (s stackMember) skipReason(action string) (skip bool, note string) {
+	if action == stackRestart {
+		switch {
+		case !isActiveState(s.state):
+			// Silently: a stack that is half down is the normal case for this button,
+			// and naming every container it left alone would bury the outcome.
+			return true, ""
+		case s.isSelf:
+			return true, "left docKontroler itself running"
+		case s.state == docker.StatePaused:
+			// Same as starting: what a paused container needs is unpausing, which
+			// docKontroler does not offer, and Docker will not do it for a restart.
+			return true, s.name + " is paused, which restarting cannot resume"
+		}
+		return false, ""
+	}
+
 	if action == stackStop {
 		switch {
 		case !isActiveState(s.state):

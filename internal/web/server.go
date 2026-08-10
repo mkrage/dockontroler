@@ -88,6 +88,7 @@ func (s *Server) Handler() http.Handler {
 	action("/containers/{id}/policy", s.handlePolicy)
 	action("/stacks/{project}/start", s.handleStack("start"))
 	action("/stacks/{project}/stop", s.handleStack("stop"))
+	action("/stacks/{project}/restart", s.handleStack("restart"))
 
 	mux.Handle("GET /static/", s.staticHandler())
 
