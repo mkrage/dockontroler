@@ -177,9 +177,10 @@ code {
    was. A filter box wide enough to be useful pushed the button beside it onto a
    second line, which made the header grow, the wordmark drift and everything below
    it move down — for a box nobody had typed in yet.
-   Here the three tracks are fixed in kind: the wordmark takes what it needs, the
-   filter takes the space that is left over, and the live cluster takes what it
-   needs. Nothing in the bar can change its height, so nothing below it moves.
+   Here every track is fixed in kind: the wordmark, the view switch and the live
+   cluster take what they need, and the filter takes the space that is left over —
+   which is the one thing in the bar that has to give. Nothing here can change its own
+   height, so nothing below it moves.
    Opaque, and deliberately so: a blurred translucent bar over the scrolling list
    looked the part, but it makes the browser recomposite the whole viewport on every
    scroll frame — on a page that replaces its own contents every few seconds and is
@@ -187,7 +188,7 @@ code {
    underneath separates the bar from what scrolls beneath it just as well. */
 .topbar {
 	display: grid;
-	grid-template-columns: auto minmax(0, 1fr) auto;
+	grid-template-columns: auto minmax(0, 1fr) auto auto;
 	align-items: center;
 	gap: 0.5rem 1.5rem;
 	min-height: 3.5rem;
@@ -492,6 +493,24 @@ code {
 	background: var(--stopped);
 }
 
+/* The same bar inside a panel row, sized by its contents instead of by the space it
+   is in: there it is a reading of one stack, and a stack of two must not draw the same
+   wide bar a stack of ten does — the width is part of what it says. */
+.ribbon--inline {
+	flex: none;
+	width: auto;
+	max-width: 6rem;
+	height: 10px;
+	border-radius: 3px;
+}
+
+/* Wide enough to be a cell rather than a hairline — a bar of two containers has to read
+   as two things — and still able to give way on a stack of thirty. */
+.ribbon--inline .ribbon__cell {
+	flex: 0 1 8px;
+	min-width: 3px;
+}
+
 .ribbon__cell--running {
 	background: var(--running);
 }
@@ -717,15 +736,25 @@ code {
 	background: var(--state, var(--stopped));
 }
 
-.row--running {
+/* The state colours are named once, here, for the two things that carry one on an
+   edge: the card and the panel row. Whatever draws it reads --state, and the fourth
+   state needs no rule because it is the fallback above.
+   A container *inside* a panel row cannot use this. --state is a custom property and
+   custom properties inherit, so a stopped container in a running stack would draw its
+   own dot in the colour of the stack around it — which is exactly the lie that view
+   exists to avoid. Those three colours are set outright; see .member::before. */
+.row--running,
+.unit--running {
 	--state: var(--running);
 }
 
-.row--transitional {
+.row--transitional,
+.unit--transitional {
 	--state: var(--transitional);
 }
 
-.row--error {
+.row--error,
+.unit--error {
 	--state: var(--error);
 }
 
@@ -1148,6 +1177,278 @@ a.port:hover {
 	font-size: 0.76rem;
 }
 
+/* ---------- the panel: one row per thing you switch ---------- */
+
+/* A column of rows, not a grid of tiles. The point of this view is that the switch for
+   every service is in the same place, and a tile puts it somewhere else in every one —
+   so the rows are full width and the buttons keep a common right edge all the way
+   down. */
+.panel {
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+	margin: 1.25rem 0 0;
+	padding: 0;
+}
+
+/* Three columns: the name and its bar take the slack, the ports and the buttons take
+   what they need. align-items: start, because an unfolded row grows downwards and its
+   buttons have to stay on the line the name is on. */
+.unit {
+	position: relative;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto auto;
+	align-items: start;
+	gap: 0.2rem 0.9rem;
+	padding: 0.25rem 0.55rem 0.25rem 0.85rem;
+	background: var(--surface);
+	border: 1px solid var(--hairline);
+	border-radius: var(--radius-sm);
+	box-shadow: var(--shadow-1);
+	overflow: hidden;
+}
+
+/* The state on the leading edge, the same shape and the same colours the cards use. */
+.unit::before {
+	content: "";
+	position: absolute;
+	inset: 0 auto 0 0;
+	width: 3px;
+	background: var(--state, var(--stopped));
+}
+
+.unit--self {
+	border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.unit.is-busy {
+	opacity: 0.55;
+	pointer-events: none;
+}
+
+.unit form {
+	margin: 0;
+}
+
+.unit__fold {
+	grid-column: 1;
+	min-width: 0;
+}
+
+/* The clickable part of the row, and deliberately the part with no control in it: see
+   the template for why the ports and the buttons are outside it. */
+.unit__summary {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	min-height: 1.9rem;
+	cursor: pointer;
+	list-style: none;
+}
+
+.unit__summary::-webkit-details-marker {
+	display: none;
+}
+
+.unit__summary::marker {
+	content: "";
+}
+
+/* The same fold triangle the two page sections use, drawn the same way and for the
+   same reason — the browser's own sits at a different size in every one. */
+.unit__summary::before {
+	content: "";
+	flex: none;
+	width: 0.35rem;
+	height: 0.35rem;
+	border: 2px solid var(--text-faint);
+	border-width: 0 2px 2px 0;
+	transform: rotate(-45deg);
+	transition: transform 140ms ease;
+}
+
+.unit__fold[open] .unit__summary::before {
+	transform: rotate(45deg);
+}
+
+.unit__summary:hover::before {
+	border-color: var(--text-dim);
+}
+
+.unit__name {
+	flex: 0 1 auto;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-weight: 650;
+}
+
+/* A project's colour on its name, the way the chips in the other view carry it. A row
+   for a single loose container has none: there is nothing for a colour to tie it to. */
+.unit--stacked .unit__name {
+	color: var(--project);
+}
+
+.unit__count {
+	flex: none;
+	margin-right: auto;
+	color: var(--text-dim);
+	font-family: var(--font-mono);
+	font-size: 0.76rem;
+	font-variant-numeric: tabular-nums;
+}
+
+.unit__ports {
+	grid-column: 2;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	align-items: center;
+	gap: 0.25rem;
+	min-height: 1.9rem;
+	max-width: 18rem;
+}
+
+.unit__actions {
+	grid-column: 3;
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	min-height: 1.9rem;
+}
+
+/* The containers of a row, hanging off the name they belong to. A rule down their left
+   says how far the row reaches without needing a box around them. */
+.members {
+	list-style: none;
+	margin: 0.15rem 0 0.4rem 0.2rem;
+	padding: 0 0 0 0.75rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.1rem;
+	border-left: 1px solid var(--hairline);
+}
+
+/* A line, not a card. Which is also why the state is a dot here: a line this short has
+   no edge worth colouring. */
+.member {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.45rem;
+	min-width: 0;
+	padding: 0.2rem 0;
+	font-size: 0.86rem;
+}
+
+/* Set outright rather than through --state, which the row above would have handed down
+   to it: a stopped container inside a running stack has to look stopped. */
+.member::before {
+	content: "";
+	flex: none;
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: color-mix(in srgb, var(--stopped) 60%, var(--surface));
+}
+
+.member--running::before {
+	background: var(--running);
+}
+
+.member--transitional::before {
+	background: var(--transitional);
+}
+
+.member--error::before {
+	background: var(--error);
+}
+
+.member.is-busy {
+	opacity: 0.55;
+	pointer-events: none;
+}
+
+.member form {
+	margin: 0;
+}
+
+.member__name {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-weight: 600;
+}
+
+.member__status {
+	color: var(--text-dim);
+	font-family: var(--font-mono);
+	font-size: 0.75rem;
+	white-space: nowrap;
+}
+
+.member__ports {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.25rem;
+}
+
+/* Pushed to the far side, so the actions of every container in an unfolded row line up
+   with each other however long their names are. */
+.member__actions {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	margin-left: auto;
+}
+
+/* ---------- the view switch ---------- */
+
+/* In the bar, not in the page: which view you are looking at is a property of the whole
+   page, and a switch that scrolls away with the list is one you cannot find when you
+   want the other view back. */
+/* The track is the sunken surface, not the alternate one: the option that is current is
+   the page's own surface raised out of it, and only the sunken shade is darker than that
+   in both themes. Against --surface-alt the raised option would come out darker than
+   its track in the dark theme and read as a hole. */
+.viewswitch {
+	display: flex;
+	gap: 2px;
+	padding: 2px;
+	background: var(--surface-sunken);
+	border: 1px solid var(--hairline);
+	border-radius: var(--radius-sm);
+}
+
+.viewswitch__option {
+	padding: 0.22rem 0.6rem;
+	border-radius: var(--radius-xs);
+	color: var(--text-dim);
+	font-size: 0.78rem;
+	font-weight: 600;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.viewswitch__option:hover {
+	color: var(--text);
+	background: var(--control-hover);
+}
+
+/* The current one is the raised one: on a control of two, depth is read faster than a
+   difference in colour, and it survives being looked at out of the corner of an eye. */
+.viewswitch__option.is-current {
+	background: var(--surface);
+	color: var(--text);
+	box-shadow: var(--shadow-1);
+}
+
 /* ---------- the two sections of the list ---------- */
 
 /* Both halves of the list are the same thing — a labelled section you may put away —
@@ -1251,10 +1552,10 @@ a.port:hover {
    swaps places. */
 @media (max-width: 46rem) {
 	.topbar {
-		grid-template-columns: auto 1fr;
+		grid-template-columns: minmax(0, 1fr) auto;
 		grid-template-areas:
 			"brand live"
-			"search search";
+			"search view";
 		gap: 0.5rem 0.75rem;
 	}
 
@@ -1265,11 +1566,53 @@ a.port:hover {
 	.topbar__live {
 		grid-area: live;
 		min-width: 0;
+		justify-self: end;
 	}
 
 	.search {
 		grid-area: search;
 		max-width: none;
+	}
+
+	/* At the end of the filter row rather than beside the wordmark: it is the one
+	   control here that is pressed once and then left alone, so it gives up the top
+	   line to the things that are not. */
+	.viewswitch {
+		grid-area: view;
+	}
+
+	/* The switch takes what it needs, so the box beside it is what has to give — and a
+	   text input does not shrink below its own default width unless it is told to.
+	   Without this the bar is wider than the screen and the whole page scrolls
+	   sideways. */
+	.search,
+	.filter {
+		min-width: 0;
+	}
+
+	/* One column: three buttons saying "Restart all" cannot share a line with a name on
+	   a phone, and squeezing them tried to — the row ended up wider than the screen.
+	   Folded, which is how a row starts, that is name / ports / buttons. Unfolded, the
+	   buttons sit under the containers they act on, which is the one place left for them
+	   and reads as the foot of the row. */
+	.unit {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.unit__ports,
+	.unit__actions {
+		grid-column: 1;
+	}
+
+	.unit__ports {
+		justify-content: flex-start;
+		min-height: 0;
+		max-width: none;
+	}
+
+	/* Narrower still than a phone, and the three no longer fit beside each other. */
+	.unit__actions {
+		flex-wrap: wrap;
 	}
 }
 

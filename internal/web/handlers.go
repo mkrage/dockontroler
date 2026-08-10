@@ -7,10 +7,67 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/mkrage/dockontroler/internal/manager"
 )
+
+// The two views the list can be rendered in, and the cookie that remembers which.
+//
+// Both are rendered on the server: the refresh already swaps in markup from the
+// templates, and a view assembled in the browser would be a second place a row can be
+// wrong. Which one is a cookie rather than something kept in the browser alone,
+// because the server has to know before it writes the first row.
+const (
+	viewCards  = "cards"
+	viewPanel  = "panel"
+	viewCookie = "dkview"
+)
+
+// viewFromRequest decides which view to render: what the URL asks for, else what the
+// cookie remembers, else the cards.
+//
+// An unknown value is not an error. It can only come from a hand-typed URL or a stale
+// cookie, and the honest answer to both is the default view rather than a page saying
+// no.
+func viewFromRequest(r *http.Request) string {
+	if asked := r.URL.Query().Get("view"); asked != "" {
+		return knownView(asked)
+	}
+	if cookie, err := r.Cookie(viewCookie); err == nil {
+		return knownView(cookie.Value)
+	}
+	return viewCards
+}
+
+func knownView(view string) string {
+	if view == viewPanel {
+		return viewPanel
+	}
+	return viewCards
+}
+
+// rememberView keeps the choice for the next page load. Only set when the request
+// named a view, so a plain reload never rewrites the cookie it was just read from.
+//
+// HttpOnly because nothing in the browser needs to read it: app.js asks the fragment
+// endpoint for a view by query parameter, and the answer to that request carries the
+// cookie back.
+func rememberView(w http.ResponseWriter, r *http.Request, view string) {
+	if r.URL.Query().Get("view") == "" {
+		return
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     viewCookie,
+		Value:    view,
+		Path:     "/",
+		MaxAge:   int((365 * 24 * time.Hour).Seconds()),
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
 
 // pageData is the model for the full page template.
 type pageData struct {
@@ -22,7 +79,15 @@ type pageData struct {
 	// visible banner rather than a silent gap.
 	SelfProtected bool
 	Flash         *flashMessage
+	// View is the list view this page was rendered in, which is what the switch in
+	// the top bar marks as current.
+	View string
 }
+
+// IsPanel is the question both the layout and the list template ask of the view, and
+// it is a method rather than a string comparison in the templates so the two view
+// names live in exactly one place.
+func (p pageData) IsPanel() bool { return p.View == viewPanel }
 
 type flashMessage struct {
 	Level string // "ok" or "error"
@@ -38,7 +103,11 @@ type flashMessage struct {
 type overviewData struct {
 	manager.Overview
 	Host string
+	// View decides which of the two arrangements the list template renders.
+	View string
 }
+
+func (o overviewData) IsPanel() bool { return o.View == viewPanel }
 
 // card is what the template renders one container from: the container itself, the
 // host that every published port needs to become a link, and the colour of the
@@ -89,6 +158,216 @@ type stack struct {
 	HasSelf bool
 }
 
+// unit is one thing the panel view can start, restart and stop as a whole: a Compose
+// project, whatever its size, or a container that belongs to no project.
+//
+// The card view has no such notion, and for good reasons — a stack is a chip there, a
+// lone container is its own card. But a control panel needs every row to be the same
+// kind of thing, or the two sorts the strip leaves out get no switch anywhere: a
+// project holding a single container, and a container Compose never touched.
+type unit struct {
+	// Name is what the row is called: the Compose project, or the container's own
+	// name for a unit that is one container.
+	Name string
+
+	// Project is the Compose project this row acts on, empty for a lone container.
+	// It is also what decides where the buttons post; see URL.
+	Project string
+
+	// Class is the stylesheet's colour slot for the project, matching the cards in
+	// the other view. Empty for anything that has no colour there either.
+	Class string
+
+	// Containers are the members, in the order the overview sorted them.
+	Containers []card
+
+	// Host is the address the browser used, which is what turns a port into a link.
+	Host string
+}
+
+// Total and ActiveCount are the fraction the row shows: how much of this unit is up.
+func (u unit) Total() int { return len(u.Containers) }
+
+func (u unit) ActiveCount() int {
+	active := 0
+	for _, container := range u.Containers {
+		if container.Active() {
+			active++
+		}
+	}
+	return active
+}
+
+// Multi reports whether this unit is more than one container, which is what decides
+// whether its buttons say "all" — and whether stopping it is worth a confirmation.
+func (u unit) Multi() bool { return len(u.Containers) > 1 }
+
+// AllActive and AnyActive decide which of the three buttons can do anything.
+func (u unit) AllActive() bool { return u.Total() > 0 && u.ActiveCount() == u.Total() }
+
+func (u unit) AnyActive() bool { return u.ActiveCount() > 0 }
+
+// SelfOnly marks the row that is docKontroler and nothing else. Its Stop and Restart
+// would be refused, so they are offered as dead buttons saying why instead — the same
+// answer its card gives in the other view.
+func (u unit) SelfOnly() bool { return u.Total() == 1 && u.HasSelf() }
+
+// HasSelf reports whether docKontroler itself is in this unit, which is why stopping
+// it will leave one container behind.
+func (u unit) HasSelf() bool {
+	for _, container := range u.Containers {
+		if container.IsSelf {
+			return true
+		}
+	}
+	return false
+}
+
+// StateClass is the one colour the row carries on its edge.
+//
+// It is the worst state in the unit, because a column of thirty rows is scanned for
+// what is wrong, not for what is fine. A unit that is only partly up is deliberately
+// *not* one of those: half a stack running is as often somebody's intention — a
+// backup container in the project, a service scaled to zero — as it is a fault, and a
+// row that sits amber forever teaches you to ignore amber. The fraction beside the
+// bar says it instead.
+func (u unit) StateClass() string {
+	active, transitional := 0, 0
+	for _, container := range u.Containers {
+		switch container.StateClass() {
+		case "error":
+			return "error"
+		case "transitional":
+			transitional++
+		}
+		if container.Active() {
+			active++
+		}
+	}
+	switch {
+	case transitional > 0:
+		return "transitional"
+	case active > 0:
+		return "running"
+	default:
+		return "stopped"
+	}
+}
+
+// URL is where a button on this row posts.
+//
+// A project posts to the stack routes whatever its size: those act on the Compose
+// label, so a project of one container is not a special case there — and going
+// through them means it is stopped in dependency order and reported as a stack, like
+// every other project. A container with no project has no stack to post to, so its
+// row drives the container routes directly.
+func (u unit) URL(action string) string {
+	if u.Project != "" {
+		return "/stacks/" + url.PathEscape(u.Project) + "/" + action
+	}
+	if len(u.Containers) == 0 {
+		return ""
+	}
+	return "/containers/" + url.PathEscape(u.Containers[0].ID) + "/" + action
+}
+
+// StopConfirm and RestartConfirm are what the browser asks before the two buttons
+// that interrupt a service, or "" for a row where no question is warranted.
+//
+// Only a unit of more than one container is asked about, which is the rule the strip
+// in the other view follows: one container is one card's worth of consequence, and a
+// dialog in front of every stop would train the reflex that dismisses it.
+func (u unit) StopConfirm() string {
+	if !u.Multi() {
+		return ""
+	}
+	text := fmt.Sprintf("Stop the whole %s stack?\n\n%d of %d containers are running and will be stopped, the ones that depend on others first.",
+		u.Name, u.ActiveCount(), u.Total())
+	if u.HasSelf() {
+		text += "\n\ndocKontroler itself belongs to this stack and will be left running."
+	}
+	return text
+}
+
+func (u unit) RestartConfirm() string {
+	if !u.Multi() {
+		return ""
+	}
+	return fmt.Sprintf("Restart the whole %s stack?\n\nThe %d running containers go down and come back one at a time, dependencies first. Whatever is stopped stays stopped.",
+		u.Name, u.ActiveCount())
+}
+
+// SearchText is what the filter box matches the row *itself* against: its name, and
+// nothing its containers contribute.
+//
+// That is the whole point of the split. Each container carries its own haystack, and
+// the two answer different questions: whether the row is shown at all — it is, if
+// either it or any of its containers match — and whether the containers inside it are
+// filtered too. A row whose own name you typed keeps all of them, because you were
+// looking for the stack; a row found through one of its services shows that service.
+// Fold the members' words in here and every row found by a service would open onto
+// everything standing beside it.
+func (u unit) SearchText() string { return strings.ToLower(u.Name) }
+
+// unitPort is one way into a unit: a published port of one of its containers, and
+// whether anything is listening on it right now.
+type unitPort struct {
+	manager.PortMapping
+	Host string
+	// Live is true when the container publishing this port is running, which is what
+	// decides whether the port is offered as a link.
+	Live bool
+	// Container is which member publishes it — the part the row cannot show, since
+	// the port is listed for the unit as a whole.
+	Container string
+}
+
+// Link is where to send the browser, or "" when there is nothing useful to open:
+// a udp port, or a mapping whose container is not running.
+func (p unitPort) Link() string {
+	if !p.Live {
+		return ""
+	}
+	return p.URL(p.Host)
+}
+
+func (p unitPort) Title() string { return p.Container + ": " + p.Detail() }
+
+// Ports are the ways into this unit, gathered from its containers and deduplicated.
+//
+// One list for the whole row rather than one per container, because "which port was
+// that again" is a question about the service, not about which container of it
+// happens to publish the port. The members carry their own again once the row is
+// folded open, which is where that distinction starts to matter.
+func (u unit) Ports() []unitPort {
+	var ports []unitPort
+	at := map[manager.PortMapping]int{}
+	for _, container := range u.Containers {
+		for _, mapping := range container.Ports {
+			if index, seen := at[mapping]; seen {
+				// Two containers publishing the same mapping cannot both be up, but one
+				// of them being up is what decides whether this is a link.
+				if container.Running && !ports[index].Live {
+					ports[index].Live = true
+					ports[index].Container = container.Name
+				}
+				continue
+			}
+			at[mapping] = len(ports)
+			ports = append(ports, unitPort{
+				PortMapping: mapping,
+				Host:        u.Host,
+				Live:        container.Running,
+				Container:   container.Name,
+			})
+		}
+	}
+	// By port number across the whole unit: the members are sorted by name, so
+	// without this the numbers run backwards wherever the alphabet does.
+	sort.SliceStable(ports, func(i, j int) bool { return ports[i].Port() < ports[j].Port() })
+	return ports
+}
+
 // projectColours is how many colour slots app.css defines — and it has to stay in
 // step with it, which is what TestProjectColoursMatchTheStylesheet is for.
 //
@@ -129,6 +408,46 @@ func (o overviewData) Stacks() []stack {
 		})
 	}
 	return stacks
+}
+
+// Units is the panel view: one row per thing that can be switched as a whole, in the
+// order the overview sorted the projects, and the containers without one last.
+func (o overviewData) Units() []unit {
+	classes := projectClasses(o.Groups)
+
+	var units []unit
+	for _, group := range o.Groups {
+		if group.Project == "" {
+			// One row each, not one row called "no project": these containers share
+			// nothing but the absence of one, and a Start all above them would be a
+			// button that starts unrelated things together.
+			for _, container := range group.Containers {
+				units = append(units, unit{
+					Name:       container.Name,
+					Host:       o.Host,
+					Containers: []card{{Container: container, Host: o.Host}},
+				})
+			}
+			continue
+		}
+
+		members := make([]card, 0, len(group.Containers))
+		for _, container := range group.Containers {
+			members = append(members, card{
+				Container:    container,
+				Host:         o.Host,
+				ProjectClass: classes[group.Project],
+			})
+		}
+		units = append(units, unit{
+			Name:       group.Project,
+			Project:    group.Project,
+			Class:      classes[group.Project],
+			Host:       o.Host,
+			Containers: members,
+		})
+	}
+	return units
 }
 
 // cards flattens the groups, keeping their order, so containers of one Compose
@@ -196,14 +515,17 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	view := viewFromRequest(r)
 	data := pageData{
-		Overview:      overviewData{Overview: overview, Host: linkHost(r)},
+		Overview:      overviewData{Overview: overview, Host: linkHost(r), View: view},
 		RefreshMillis: s.refreshInterval.Milliseconds(),
 		AssetVersion:  s.assetVersion,
 		SelfProtected: s.manager.SelfID() != "",
 		Flash:         flashFromQuery(r.URL.Query()),
+		View:          view,
 	}
 
+	rememberView(w, r, view)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	// The overview reflects live daemon state, so it must never be cached.
 	w.Header().Set("Cache-Control", "no-store")
@@ -224,9 +546,14 @@ func (s *Server) handleFragment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	view := viewFromRequest(r)
+	// Asking for a view here is how the switch in the top bar works without a page
+	// load, so this is also where that choice has to be recorded for the next one.
+	rememberView(w, r, view)
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
-	data := overviewData{Overview: overview, Host: linkHost(r)}
+	data := overviewData{Overview: overview, Host: linkHost(r), View: view}
 	if err := s.templates.ExecuteTemplate(w, "containers", data); err != nil {
 		s.log.Error("could not render the container list", "error", err)
 	}

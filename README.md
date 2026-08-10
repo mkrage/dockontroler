@@ -132,6 +132,15 @@ is one static binary with the templates compiled in.
 
 ## The overview
 
+There are **two views of the same host**, and the switch between them is in the top
+bar: **Cards**, one card per container with everything you can do to it, and **Panel**,
+one row per service to start and stop whole stacks. Which one you chose is remembered
+in a cookie, because the list is rendered on the server — it has to know which view
+before it writes the first row. Both are real links, so the switch works with
+JavaScript off; with it on, switching costs no page load.
+
+### The cards
+
 Each container is a card: name and state on the first line, then the image, its
 ports, and at the foot of the card the autostart setting and the three actions. How
 many cards sit beside each other is left to the browser — one per line on a phone,
@@ -186,11 +195,11 @@ container, its cards share a colour on their top edge** — the edge the state d
 use. A project with a single container gets none: it *is* that container, and a colour
 tying a card to itself says nothing.
 
-There are eight of those colours, all of them between cyan and pink. Nothing from the
+There are ten of those colours, all of them between cyan and pink. Nothing from the
 green-amber-red arc, because those three *are* the container state on the left edge and
 a project borrowing one would read as a state; and consecutive colours jump about a
 third of the way around what is left, because what a colour has to tell apart is the
-project next to it. Eight is not infinite: a ninth stack starts the palette over.
+project next to it. Ten is not infinite: an eleventh stack starts the palette over.
 
 **Stacks are started and stopped as a whole** from the strip above the grid, one chip
 per multi-container project, in that project's colour — so the colours have a legend
@@ -200,18 +209,55 @@ interesting one at a time. `Start all` walks the stack in the order Compose's ow
 what needs it and goes down after. Containers already in the state you asked for are
 left alone, one that fails does not stop the others, and if docKontroler is part of the
 stack it stays running — stopping it would kill the request half-way through. Single
-container projects have no chip: the card's own buttons already are the stack control.
+container projects have no chip in this view: the card's own buttons already are the
+stack control. The panel view has a row for them anyway — see below.
 
 The order comes from a label Compose writes onto the containers themselves, so nothing
 here reads your yaml. Containers created by Compose v1 do not have it and fall back to
 service-name order. Nor is it a `compose up`: **nothing is created or removed**, only
 started and stopped, and a service scaled to zero stays at zero.
 
+### The panel
+
+The other view is one row per thing you switch, and its point is that **nothing on the
+host is without a switch**. The strip above the cards only carries projects of more than
+one container, which leaves two sorts of container with no whole-service button
+anywhere: a project holding exactly one, and a container Compose never touched. Here
+they are rows like any other.
+
+A row is the project's name, a bar with one cell per container, the fraction that is up,
+the ports of the whole service, and `Start all`, `Restart all`, `Stop all` — always in
+that order, on a common right edge all the way down the column, so the button you did
+not mean to press is never where the one you did used to be. The buttons drop the "all"
+on a row that is one container, because there is no all.
+
+**Rows fold open** to their containers, each with its own `Start`, `Stop` and `Restart`.
+What is not there is what the cards are for: the image, the compose file it came from,
+the autostart setting, `Recreate`. This view is about switching services, and a row that
+repeated a card would be a card.
+
+`Restart all` is the operation the page did not have before: it walks the stack the way
+`Start all` does, dependencies first, and **restarts what is running while leaving what
+is down alone**. Bringing a stopped container up is the job of the button next to it; a
+restart that quietly starts three containers nobody asked for is the wrong surprise from
+a button whose neighbour is `Stop all`. Stopping or restarting a stack of more than one
+container asks first.
+
+A row's own left edge is the **worst** state in it, so a column of thirty is scanned for
+what is wrong. A stack that is only partly up is deliberately not one of those: half a
+stack running is as often somebody's intention — a one-off backup container in the
+project — as it is a fault, and a row sitting amber forever teaches you to ignore amber.
+The fraction says it instead.
+
+### Everything else
+
 **The filter box** in the top bar narrows the page as you type — container name,
 Compose project, service, image or port number, and several words at once (`blog db`)
 match in any order. A stack's chip stays as long as one of its containers is still
 shown, so the control does not disappear just as you found what it belongs to. `/`
-jumps to the box, `Escape` clears it.
+jumps to the box, `Escape` clears it. In the panel view a row matches on its own name or
+on any of its containers, and the containers inside it are filtered too — so unfolding a
+row you searched for shows what you were looking for and not everything beside it.
 
 It filters in the browser, on a list that is already there, which is why it answers
 between keystrokes and why it is not offered at all without JavaScript. The counts

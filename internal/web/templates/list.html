@@ -28,6 +28,25 @@
 <p class="empty">No containers on this host yet.</p>
 {{end}}
 
+{{/* Two ways to read the same host, both rendered here rather than one of them being
+     assembled in the browser: the refresh already replaces this element with markup
+     from these templates, and a second renderer would be a second place a row can be
+     wrong. Only the chosen one is sent — see viewFromRequest for who chooses. */}}
+{{if .IsPanel}}
+{{template "panel" .}}
+{{else}}
+{{template "cards" .}}
+{{end}}
+
+{{/* Filled in and unhidden by app.js when the filter matches nothing. It is rendered
+     here, hidden, rather than created in the browser: the fragment refresh replaces
+     everything in this element, and markup that only exists in JavaScript would have
+     to be rebuilt every few seconds. */}}
+<p class="empty" id="no-matches" hidden></p>
+{{end}}
+
+{{/* ---------- the cards: one per container ---------- */}}
+{{define "cards"}}
 {{/* One chip per Compose project that holds more than one container, in the colour
      its cards carry — so the colour needs no legend, it has one. It is also where a
      stack is started or stopped as a whole, which is usually what somebody wants: a
@@ -107,12 +126,156 @@
 	</ul>
 </details>
 {{end}}
+{{end}}
 
-{{/* Filled in and unhidden by app.js when the filter matches nothing. It is rendered
-     here, hidden, rather than created in the browser: the fragment refresh replaces
-     everything in this element, and markup that only exists in JavaScript would have
-     to be rebuilt every few seconds. */}}
-<p class="empty" id="no-matches" hidden></p>
+{{/* ---------- the panel: one row per thing you switch ---------- */}}
+
+{{/* Every row is the same kind of thing — a Compose project, or a container that
+     belongs to none — so this is the one view in which nothing on the host is without
+     a switch. The strip in the card view leaves out a project holding a single
+     container and a container Compose never touched; here they are rows like any
+     other.
+     No sections for running and stopped: a row is a service, and a service that is
+     down is exactly what you came to this view to start. The order is the overview's
+     own, so a row keeps its place while you look at it. */}}
+{{define "panel"}}
+<ul class="panel">
+	{{range .Units}}
+	<li class="unit unit--{{.StateClass}}{{if .HasSelf}} unit--self{{end}}{{with .Class}} unit--stacked {{.}}{{end}}"
+	    data-unit="{{.Name}}" data-search="{{.SearchText}}">
+
+		{{/* The fold holds only what is not a control. A link or a button inside a
+		     <summary> is both activated and toggles the fold, which for a button called
+		     "Stop all" is not a quirk worth living with — so the ports and the three
+		     buttons sit beside the fold in the row, where the stylesheet lines them up
+		     with the name. Folded shut by default: the row is the answer, its
+		     containers are the detail behind it. */}}
+		<details class="unit__fold" data-fold="unit:{{.Name}}">
+			<summary class="unit__summary">
+				<span class="unit__name" title="{{if .Project}}Compose project {{.Project}}{{else}}Container {{.Name}}, no Compose project{{end}}">{{.Name}}</span>
+
+				{{/* The same bar as at the top of the page, one cell per container, so a
+				     stack that is 3/4 up says which one is missing and whether the fourth
+				     is off or dying — without being unfolded. */}}
+				<span class="ribbon ribbon--inline" role="img"
+				      aria-label="{{.ActiveCount}} of {{.Total}} containers running">
+					{{range .Containers}}<span class="ribbon__cell ribbon__cell--{{.StateClass}}"
+						title="{{.Name}} — {{.Status}}"></span>{{end}}
+				</span>
+
+				<span class="unit__count"
+				      title="{{.ActiveCount}} of {{.Total}} containers are up">{{.ActiveCount}}/{{.Total}}</span>
+			</summary>
+
+			<ul class="members">
+				{{range .Containers}}{{template "member" .}}{{end}}
+			</ul>
+		</details>
+
+		{{/* The ports of the whole unit, deduplicated: "which port was that again" is a
+		     question about the service, not about which of its containers publishes the
+		     number. Each member carries its own again once the row is open. */}}
+		<div class="unit__ports">
+			{{range .Ports}}
+			{{if .Link}}
+			<a class="port" href="{{.Link}}" target="_blank" rel="noopener noreferrer"
+			   title="{{.Title}}">{{.Label}}</a>
+			{{else}}
+			<span class="port port--idle" title="{{.Title}}">{{.Label}}</span>
+			{{end}}
+			{{end}}
+		</div>
+
+		{{/* Start, Restart, Stop, always in that order and always in the same place, so
+		     the one you did not mean to press is never where the one you did used to be.
+		     Whole buttons rather than a disabled attribute on a form, as everywhere else
+		     on this page: what cannot do anything is not offered as a form at all. */}}
+		<div class="unit__actions">
+			{{if .AllActive}}
+			<button type="button" class="btn btn--quiet btn--slim" disabled
+			        title="everything here is already up">Start{{if .Multi}} all{{end}}</button>
+			{{else}}
+			<form method="post" action="{{.URL "start"}}">
+				{{/* Filled in when there is nothing up at all: then starting is the point of
+				     the row rather than one of three options. */}}
+				<button type="submit" class="btn btn--slim {{if .AnyActive}}btn--quiet{{else}}btn--primary{{end}}">Start{{if .Multi}} all{{end}}</button>
+			</form>
+			{{end}}
+
+			{{if .SelfOnly}}
+			<button type="button" class="btn btn--quiet btn--slim" disabled
+			        title="docKontroler will not restart itself">Restart</button>
+			<button type="button" class="btn btn--quiet btn--slim" disabled
+			        title="docKontroler will not stop itself">Stop</button>
+			{{else if .AnyActive}}
+			<form method="post" action="{{.URL "restart"}}"{{with .RestartConfirm}} data-confirm="{{.}}"{{end}}>
+				<button type="submit" class="btn btn--quiet btn--slim">Restart{{if .Multi}} all{{end}}</button>
+			</form>
+			<form method="post" action="{{.URL "stop"}}"{{with .StopConfirm}} data-confirm="{{.}}"{{end}}>
+				<button type="submit" class="btn btn--quiet btn--slim btn--danger">Stop{{if .Multi}} all{{end}}</button>
+			</form>
+			{{else}}
+			<button type="button" class="btn btn--quiet btn--slim" disabled
+			        title="nothing here is running">Restart{{if .Multi}} all{{end}}</button>
+			<button type="button" class="btn btn--quiet btn--slim" disabled
+			        title="nothing here is running">Stop{{if .Multi}} all{{end}}</button>
+			{{end}}
+		</div>
+	</li>
+	{{end}}
+</ul>
+{{end}}
+
+{{/* One container inside an unfolded row. A line, not a card: everything a card says
+     about configuration — the image, the compose file, the restart policy — is what
+     the other view is for. What is left is what you act on: which service it is, what
+     Docker says about it, where it answers, and the two or three things you can do to
+     it. */}}
+{{define "member"}}
+{{$host := .Host}}
+{{$running := .Running}}
+<li class="member member--{{.StateClass}}{{if .IsSelf}} member--self{{end}}"
+    data-id="{{.ID}}" data-search="{{.SearchText}}">
+	<span class="member__name" title="{{.Name}}">
+		{{if .ComposeService}}{{.ComposeService}}{{else}}{{.Name}}{{end}}
+		{{if .IsSelf}}<span class="tag">this is me</span>{{end}}
+	</span>
+	<span class="member__status" title="{{.State}} — {{.Status}}">{{.Status}}</span>
+
+	<span class="member__ports">
+		{{range .Ports}}
+		{{$url := .URL $host}}
+		{{if and $running $url}}
+		<a class="port" href="{{$url}}" target="_blank" rel="noopener noreferrer"
+		   title="{{.Detail}}">{{.Label}}</a>
+		{{else}}
+		<span class="port port--idle" title="{{.Detail}}">{{.Label}}</span>
+		{{end}}
+		{{end}}
+	</span>
+
+	<div class="member__actions">
+		{{if .Active}}
+			{{if .IsSelf}}
+			<button type="button" class="btn btn--quiet btn--slim" disabled
+			        title="docKontroler will not restart itself">Restart</button>
+			<button type="button" class="btn btn--quiet btn--slim" disabled
+			        title="docKontroler will not stop itself">Stop</button>
+			{{else}}
+			<form method="post" action="/containers/{{.ID}}/restart">
+				<button type="submit" class="btn btn--quiet btn--slim">Restart</button>
+			</form>
+			<form method="post" action="/containers/{{.ID}}/stop">
+				<button type="submit" class="btn btn--quiet btn--slim btn--danger">Stop</button>
+			</form>
+			{{end}}
+		{{else}}
+		<form method="post" action="/containers/{{.ID}}/start">
+			<button type="submit" class="btn btn--primary btn--slim">Start</button>
+		</form>
+		{{end}}
+	</div>
+</li>
 {{end}}
 
 {{/* One container. The state is the left edge, the name and its port are what the

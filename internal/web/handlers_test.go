@@ -39,6 +39,9 @@ type stubEngine struct {
 type stubContainer struct {
 	id      string
 	service string
+	// project is the Compose project, empty for a container Compose never touched —
+	// which is a shape the panel view has a row for and the card view has not.
+	project string
 	image   string
 	running bool
 	policy  string
@@ -56,13 +59,22 @@ func newStubEngine() *stubEngine {
 		{
 			id:        testContainerID,
 			service:   "web",
+			project:   "blog",
 			image:     "ghcr.io/me/blog:latest",
 			running:   true,
 			publishes: true,
 			dependsOn: "db:service_started:true",
 		},
-		{id: testDBID, service: "db", image: "postgres:16", running: true},
+		{id: testDBID, service: "db", project: "blog", image: "postgres:16", running: true},
 	}}
+}
+
+// add puts another container on the stub host, for the tests that need a shape the
+// default pair cannot show.
+func (s *stubEngine) add(container *stubContainer) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.containers = append(s.containers, container)
 }
 
 func (s *stubEngine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -169,11 +181,21 @@ func (s *stubEngine) policyOf(id string) string {
 	return ""
 }
 
-func (c *stubContainer) name() string { return "blog-" + c.service + "-1" }
+// name is the container name Docker would report: what Compose builds out of the
+// project and the service, or the plain name of a container it never made.
+func (c *stubContainer) name() string {
+	if c.project == "" {
+		return c.service
+	}
+	return c.project + "-" + c.service + "-1"
+}
 
 func (c *stubContainer) labels() map[string]string {
+	if c.project == "" {
+		return nil
+	}
 	labels := map[string]string{
-		docker.LabelComposeProject:     "blog",
+		docker.LabelComposeProject:     c.project,
 		docker.LabelComposeService:     c.service,
 		docker.LabelComposeConfigFiles: "/data/compose/7/docker-compose.yml",
 	}
@@ -561,6 +583,20 @@ func TestSearchTextCoversWhatSomebodyWouldType(t *testing.T) {
 	}
 }
 
+// TestUnitSearchTextIsTheRowItself: a panel row's haystack must not swallow its
+// containers'. The browser tells the two cases apart by exactly this — a row found by
+// its own name keeps all its containers, a row found through one service shows that
+// service — and folding the members' words in here would collapse both into the first.
+func TestUnitSearchTextIsTheRowItself(t *testing.T) {
+	subject := unit{Name: "blog", Project: "blog", Containers: []card{
+		{Container: manager.Container{Name: "blog-web-1", ComposeService: "web", Image: "nginx:1.27"}},
+	}}
+
+	if haystack := subject.SearchText(); haystack != "blog" {
+		t.Errorf("SearchText() = %q, want the row's own name and nothing its containers add", haystack)
+	}
+}
+
 func TestFragmentIsJustTheList(t *testing.T) {
 	handler, _ := newTestServer(t)
 	body := get(t, handler, "/partials/containers")
@@ -583,9 +619,136 @@ func TestFragmentIsJustTheList(t *testing.T) {
 	}
 }
 
-// TestRestartStackReachesEveryRunningContainer: the operation the page did not have,
-// and it must reach the whole stack rather than the container somebody happened to aim
-// at.
+// panelHost adds the two shapes the card view's strip has no control for, which is
+// the whole reason the panel view exists: a Compose project holding exactly one
+// container, and a container Compose never touched.
+func panelHost(engine *stubEngine) {
+	engine.add(&stubContainer{
+		id:      strings.Repeat("a", 63) + "1",
+		service: "n8n",
+		project: "n8n",
+		image:   "n8nio/n8n:1.4",
+		running: true,
+	})
+	engine.add(&stubContainer{
+		id:      strings.Repeat("b", 63) + "2",
+		service: "portainer",
+		image:   "portainer/portainer-ce:2",
+		running: false,
+	})
+}
+
+// TestPanelGivesEverythingASwitch: the point of this view is that nothing on the host
+// is without one. The strip in the card view shows only projects of more than one
+// container, so a project of one and a container with no project have no whole-service
+// button anywhere — here they are rows like any other.
+func TestPanelGivesEverythingASwitch(t *testing.T) {
+	handler, engine := newTestServer(t)
+	panelHost(engine)
+	// One of the two containers of blog down, so that row has all three of its buttons
+	// live at once — a fully running stack is offered no Start.
+	engine.setRunning(testDBID, false)
+
+	body := get(t, handler, "/?view=panel")
+
+	for _, want := range []string{
+		`data-unit="blog"`,      // the project of two
+		`data-unit="n8n"`,       // the project of one
+		`data-unit="portainer"`, // no project at all
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the panel has no row %s:\n%s", want, body)
+		}
+	}
+
+	// A project posts to the stack routes whatever its size, so a project of one is
+	// stopped as a stack and reported as one.
+	for _, want := range []string{
+		`action="/stacks/blog/start"`,
+		`action="/stacks/blog/restart"`,
+		`action="/stacks/blog/stop"`,
+		`action="/stacks/n8n/stop"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the panel is missing %s:\n%s", want, body)
+		}
+	}
+	// A container with no project has no stack to post to.
+	if !strings.Contains(body, `action="/containers/`+strings.Repeat("b", 63)+`2/start"`) {
+		t.Errorf("the row for a container without a project does not drive it directly:\n%s", body)
+	}
+
+	// The strip would be the same information twice, and the one thing it can say that
+	// a row cannot — the colour a card carries — has no cards to explain here.
+	if strings.Contains(body, `class="stacks"`) {
+		t.Error("the panel view still renders the stacks strip")
+	}
+	// The fraction, which is what says a stack is not all there — the bar beside it says
+	// whether the missing one is switched off or dying.
+	if !strings.Contains(body, `>1/2<`) {
+		t.Errorf("the row does not say how much of the stack is up:\n%s", body)
+	}
+}
+
+// TestPanelRowsFoldShut: the row is the answer, its containers are the detail behind
+// it — and the fold has to be the mechanism the refresh already knows how to preserve.
+func TestPanelRowsFoldShut(t *testing.T) {
+	handler, _ := newTestServer(t)
+	body := get(t, handler, "/?view=panel")
+
+	if !strings.Contains(body, `data-fold="unit:blog"`) {
+		t.Errorf("the row is not foldable:\n%s", body)
+	}
+	if strings.Contains(body, `data-fold="unit:blog" open`) {
+		t.Error("the rows start unfolded, which is the card view with extra steps")
+	}
+	// The containers are in the markup, folded away rather than fetched on demand:
+	// nothing here renders a row in the browser.
+	if !strings.Contains(body, `class="members"`) || !strings.Contains(body, "blog-web-1") {
+		t.Errorf("the containers of the row are not in the folded markup:\n%s", body)
+	}
+}
+
+// TestViewChoiceSticks: the switch is two links, so which view you are in has to
+// survive a page load — including the redirect a form post without JavaScript ends in.
+func TestViewChoiceSticks(t *testing.T) {
+	handler, _ := newTestServer(t)
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/?view=panel", nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("GET /?view=panel = %d, want 200", recorder.Code)
+	}
+
+	var remembered *http.Cookie
+	for _, cookie := range recorder.Result().Cookies() {
+		if cookie.Name == viewCookie {
+			remembered = cookie
+		}
+	}
+	if remembered == nil || remembered.Value != viewPanel {
+		t.Fatalf("cookie = %+v, want the panel view remembered", remembered)
+	}
+
+	// The plain root URL, as the redirect after an action leads to it.
+	request := httptest.NewRequest(http.MethodGet, "/", nil)
+	request.AddCookie(remembered)
+	recorder = httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if !strings.Contains(recorder.Body.String(), `class="panel"`) {
+		t.Errorf("the remembered view was not rendered:\n%s", recorder.Body)
+	}
+	// And the fragment the auto-refresh fetches has to answer in the same view, or the
+	// next poll would swap the panel out for the cards.
+	if body := get(t, handler, "/partials/containers?view=panel"); !strings.Contains(body, `class="panel"`) {
+		t.Errorf("the fragment ignores the view:\n%s", body)
+	}
+}
+
+// TestRestartStackReachesEveryRunningContainer: the third button of a panel row is the
+// one operation the page did not have, and it must reach the whole stack rather than
+// the container somebody happened to aim at.
 func TestRestartStackReachesEveryRunningContainer(t *testing.T) {
 	handler, engine := newTestServer(t)
 

@@ -8,7 +8,7 @@
 	<link rel="icon" href="/static/favicon.svg?v={{.AssetVersion}}" type="image/svg+xml">
 	<link rel="stylesheet" href="/static/app.css?v={{.AssetVersion}}">
 </head>
-<body data-refresh-millis="{{.RefreshMillis}}">
+<body data-refresh-millis="{{.RefreshMillis}}" data-view="{{.View}}">
 	<header class="topbar">
 		<!-- The mark is embedded as the name's single capital rather than sitting
 		     beside it: doc and er carry the brand colour so they read as Docker around
@@ -43,6 +43,22 @@
 			     discovered. It fades out while the box is in use. -->
 			<kbd class="search__key">/</kbd>
 		</div>
+
+		<!-- Two ways to read the same host, and the choice is remembered in a cookie
+		     rather than in the browser alone: the list is rendered on the server, which
+		     has to know which one before it writes the first row.
+		     Real links, so this works with JavaScript switched off — app.js only
+		     intercepts them to save the page load. -->
+		<nav class="viewswitch" aria-label="List view">
+			<a class="viewswitch__option{{if not .IsPanel}} is-current{{end}}"
+			   href="/?view=cards" data-view="cards"
+			   {{if not .IsPanel}}aria-current="page"{{end}}
+			   title="One card per container, with everything you can do to it">Cards</a>
+			<a class="viewswitch__option{{if .IsPanel}} is-current{{end}}"
+			   href="/?view=panel" data-view="panel"
+			   {{if .IsPanel}}aria-current="page"{{end}}
+			   title="One row per stack, to start and stop whole services">Panel</a>
+		</nav>
 
 		<div class="topbar__live">
 			<span class="topbar__pulse" id="pulse" aria-hidden="true"></span>

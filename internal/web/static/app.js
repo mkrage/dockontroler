@@ -17,7 +17,11 @@
 	var stamp = document.getElementById("stamp");
 	var refreshButton = document.getElementById("refresh-now");
 	var filterBox = document.getElementById("filter");
+	var viewSwitch = document.querySelector(".viewswitch");
 	var refreshMillis = Number(document.body.dataset.refreshMillis) || 0;
+	// Which arrangement the list is in. The server rendered it and renders every
+	// refresh, so this is only ever passed back to it — nothing here lays out a row.
+	var view = document.body.dataset.view === "panel" ? "panel" : "cards";
 
 	if (!containers) {
 		return;
@@ -57,15 +61,16 @@
 		}, 300);
 	}
 
-	// Which of the two sections are folded right now, keyed by their data-fold name.
+	// What is folded right now, keyed by the name in data-fold: the two sections of the
+	// card view, and every row of the panel.
 	//
-	// A section that is not on the page at all is left out rather than recorded as
-	// folded: one that has just appeared — the first container to stop — has to keep
-	// the state the server rendered it with instead of inheriting "folded" from its
-	// own absence a moment ago.
+	// Something that is not on the page at all is left out rather than recorded as
+	// folded: a section or a row that has just appeared — the first container to stop, a
+	// stack somebody deployed a minute ago — has to keep the state the server rendered
+	// it with instead of inheriting "folded" from its own absence a moment ago.
 	function foldState() {
 		var state = {};
-		var folds = containers.querySelectorAll(".fold");
+		var folds = containers.querySelectorAll("[data-fold]");
 		for (var i = 0; i < folds.length; i++) {
 			state[folds[i].dataset.fold] = folds[i].open;
 		}
@@ -73,7 +78,7 @@
 	}
 
 	function restoreFolds(state) {
-		var folds = containers.querySelectorAll(".fold");
+		var folds = containers.querySelectorAll("[data-fold]");
 		for (var i = 0; i < folds.length; i++) {
 			var was = state[folds[i].dataset.fold];
 			if (was !== undefined) {
@@ -118,6 +123,30 @@
 			}
 		}
 
+		// The panel view. A row is shown if its own name matches or any of its containers
+		// do, and the containers inside it are filtered as well — so unfolding a row you
+		// searched for shows what you were looking for rather than everything standing
+		// next to it. A row whose own name matched keeps all of them: you were looking for
+		// the stack, not for one service in it. The row's data-search is deliberately its
+		// name alone; that is what makes the two cases distinguishable.
+		var units = containers.querySelectorAll(".unit");
+		for (var u = 0; u < units.length; u++) {
+			var ownHit = matches(units[u].dataset.search || "");
+			var members = units[u].querySelectorAll(".member");
+			var membersShown = 0;
+			for (var m = 0; m < members.length; m++) {
+				var memberHit = ownHit || matches(members[m].dataset.search || "");
+				members[m].hidden = !memberHit;
+				if (memberHit) {
+					membersShown++;
+				}
+			}
+			units[u].hidden = !(ownHit || membersShown > 0);
+			if (!units[u].hidden) {
+				shown++;
+			}
+		}
+
 		// A chip stays as long as one of its containers is still shown, or its own name
 		// matches: the point of finding a service is often to act on the stack around it,
 		// and the control for that must not vanish just as you found it.
@@ -130,9 +159,10 @@
 
 		// A list, a section or the strip with nothing left in it goes as well, or the
 		// page keeps their headings and gaps around nothing.
-		var groups = containers.querySelectorAll(".stacks, .rows, .fold");
+		var groups = containers.querySelectorAll(".stacks, .rows, .fold, .panel");
 		for (var k = 0; k < groups.length; k++) {
-			groups[k].hidden = !groups[k].querySelector(".row:not([hidden]), .stack:not([hidden])");
+			groups[k].hidden = !groups[k].querySelector(
+				".row:not([hidden]), .stack:not([hidden]), .unit:not([hidden])");
 		}
 
 		var nothing = containers.querySelector("#no-matches");
@@ -149,7 +179,9 @@
 			return Promise.resolve();
 		}
 
-		return fetch("/partials/containers", {
+		// The view goes with the request: the server renders both, and asking for one
+		// here is also what records the choice for the next full page load.
+		return fetch("/partials/containers?view=" + encodeURIComponent(view), {
 			headers: { Accept: "text/html" },
 			cache: "no-store"
 		}).then(function (response) {
@@ -174,8 +206,8 @@
 
 			var signature = incoming.innerHTML;
 			if (signature !== lastSignature) {
-				// The refreshed markup arrives with both sections in the state the
-				// server renders them in, so reinserting it would undo a fold the user
+				// The refreshed markup arrives with every section and row in the state
+				// the server renders it in, so reinserting it would undo a fold the user
 				// just made. Comparing incoming markup against incoming markup means
 				// this survives every later poll too.
 				var folds = foldState();
@@ -214,11 +246,12 @@
 			body.append(submitter.name, submitter.value);
 		}
 
-		// The card for a container action, the chip for a stack one: whichever it is,
-		// it greys out until the answer comes back. A stack stop is the slowest thing
-		// here — it walks its containers one at a time — so having something to look at
-		// matters more there than anywhere else.
-		var busy = form.closest(".row, .stack");
+		// Whatever the form sits in greys out until the answer comes back: the card or
+		// the chip in one view, the row or one container inside it in the other. A stack
+		// stop is the slowest thing here — it walks its containers one at a time — so
+		// having something to look at matters more there than anywhere else.
+		// Innermost first, so a container's own button does not grey out the whole row.
+		var busy = form.closest(".member, .row, .unit, .stack");
 		inFlight++;
 		if (busy) {
 			busy.classList.add("is-busy");
@@ -272,6 +305,45 @@
 
 	if (refreshButton) {
 		refreshButton.addEventListener("click", function () {
+			refresh(true);
+		});
+	}
+
+	// The switch is two real links and works without any of this — following one loads
+	// the page in the other view. All this does is save that page load: the fragment
+	// endpoint renders either view, and asking it for one is also what remembers the
+	// choice for the next time the page is opened from scratch.
+	if (viewSwitch) {
+		viewSwitch.addEventListener("click", function (event) {
+			var link = event.target.closest("a[data-view]");
+			// A modified click is somebody opening the other view in a tab of its own,
+			// which is a thing a link should keep being able to do.
+			if (!link || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+				return;
+			}
+			event.preventDefault();
+			if (link.dataset.view === view) {
+				return;
+			}
+
+			view = link.dataset.view;
+			document.body.dataset.view = view;
+			// The address bar has to agree with what is on the page: a reload of a URL
+			// still naming the other view would take it away again, and ?view= beats the
+			// cookie on purpose — a link to one view has to win.
+			if (window.history && window.history.replaceState) {
+				window.history.replaceState({}, "", link.getAttribute("href"));
+			}
+			var options = viewSwitch.querySelectorAll("a[data-view]");
+			for (var i = 0; i < options.length; i++) {
+				var current = options[i] === link;
+				options[i].classList.toggle("is-current", current);
+				if (current) {
+					options[i].setAttribute("aria-current", "page");
+				} else {
+					options[i].removeAttribute("aria-current");
+				}
+			}
 			refresh(true);
 		});
 	}
