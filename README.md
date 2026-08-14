@@ -42,27 +42,43 @@ Portainer. This is the thing you keep open in a pinned tab.
 
 ## Quick start
 
-On the machine that runs Docker:
+There is nothing to build. On the machine that runs Docker:
 
 ```bash
-git clone https://github.com/mkrage/dockontroler.git
-cd dockontroler
-./rebuild.sh
-cp docker-compose.example.yml docker-compose.yml
+curl -O https://raw.githubusercontent.com/mkrage/dockontroler/main/docker-compose.example.yml
+mv docker-compose.example.yml docker-compose.yml
 ```
 
-`rebuild.sh` builds `dockontroler:latest`, stamps the version into the binary, and
-removes any container from a previous build. It uses `docker buildx` when it is
-installed and the legacy builder otherwise; the legacy builder can only produce an
-image for the host's own architecture, so cross-building for a Raspberry Pi from an
-amd64 machine needs buildx. Edit the `ports:` line to your server's
-LAN address — **do not** leave it on `0.0.0.0`, see [Security](#security). Then:
+Edit the `ports:` line to your server's LAN address — **do not** leave it on
+`0.0.0.0`, see [Security](#security). Then:
 
 ```bash
 docker compose up -d
 ```
 
 Open `http://<your-server>:3625`.
+
+The image comes from `ghcr.io/mkrage/dockontroler:latest`, one multi-arch manifest
+covering `linux/amd64` and `linux/arm64`; docker picks the right one for the host,
+so a Raspberry Pi needs no separate tag. Version tags (`:1.2.3`, `:1.2`) exist too
+if you would rather decide yourself when to move.
+
+### Building it yourself instead
+
+Not required, but the repo builds the same image locally:
+
+```bash
+git clone https://github.com/mkrage/dockontroler.git
+cd dockontroler
+./rebuild.sh
+```
+
+`rebuild.sh` builds `dockontroler:latest`, stamps the version into the binary, and
+removes any container from a previous build. It uses `docker buildx` when it is
+installed and the legacy builder otherwise; the legacy builder can only produce an
+image for the host's own architecture, so cross-building for a Raspberry Pi from an
+amd64 machine needs buildx. Point the compose file's `image:` at that plain
+`dockontroler:latest` tag instead of the ghcr.io one.
 
 ### The compose file
 
@@ -72,7 +88,7 @@ Telegram pair. Everything else works as it stands.
 ```yaml
 services:
   dockontroler:
-    image: dockontroler:latest      # built and tagged by ./rebuild.sh
+    image: ghcr.io/mkrage/dockontroler:latest      # amd64 and arm64
     container_name: dockontroler
     restart: unless-stopped
 
@@ -116,19 +132,34 @@ one before you change the socket mount or the port binding.
 ### Deploying from Portainer
 
 A Portainer stack cannot build an image: the stack editor has no build context, so
-`build: .` fails there. That is why the compose file points at a tag you build
-yourself.
+`build: .` fails there. A published image sidesteps that entirely — nothing has to
+be checked out on the server at all.
 
-1. On the server, clone the repo and run `./rebuild.sh`.
-2. **Stacks → Add stack**, paste the compose file above, fix the `ports:` line.
-3. Deploy with **Pull latest image** switched **off** — the tag exists only on this
-   host, and a pull would go looking for it on Docker Hub.
+1. **Stacks → Add stack**, paste the compose file above, fix the `ports:` line.
+2. Deploy with **Pull latest image** switched **on**.
 
-After a code change, run `./rebuild.sh` again and hit **Update the stack**. The
-script removes the old container, so the redeploy comes up on the new image.
+To move to a newer build, hit **Update the stack** with the pull toggle on.
+
+If you build locally with `./rebuild.sh` instead, that toggle has to be **off**:
+`dockontroler:latest` exists only on that host, and a pull would go looking for it
+on Docker Hub. Run the script again before each **Update the stack** — it removes
+the old container, so the redeploy comes up on the new image.
 
 Nothing else is needed: no Go toolchain, no database, no volume. The whole thing
 is one static binary with the templates compiled in.
+
+#### If the pull says "denied"
+
+The GHCR package starts out private, whatever the repository's visibility is. Make
+it public in the package settings on GitHub, or log the server in once against a
+personal access token that has `read:packages`:
+
+```bash
+echo "$GITHUB_TOKEN" | docker login ghcr.io -u <your-github-user> --password-stdin
+```
+
+Portainer needs the same thing as a registry entry under **Registries → Custom
+registry** before the stack can pull it.
 
 ## The overview
 
@@ -512,7 +543,10 @@ RACE=0 ./test.sh
 docker run --rm -v "$PWD":/src -w /src golang:1-alpine gofmt -w .
 git diff
 
-# build and run — ./test.sh runs first, and a failure stops the build
+# build and run — ./test.sh runs first, and a failure stops the build. Your
+# docker-compose.yml has to say "dockontroler:latest" for this, not the ghcr.io
+# tag, or you will come back up on the published image and wonder where your
+# change went.
 ./rebuild.sh && docker compose up -d && docker compose logs -f
 ```
 
@@ -529,6 +563,19 @@ to do with the code, a base image bump for instance.
 
 If you do have Go locally, `go run .` works directly; without a mounted socket it
 exits with a clear message about the daemon.
+
+### CI
+
+[`.github/workflows/build.yml`](.github/workflows/build.yml) runs the same
+`./test.sh` on every push and pull request, and on `main` goes on to build and push
+`ghcr.io/mkrage/dockontroler:latest` plus a `sha-` tag. Push a `v1.2.3` tag and it
+adds `1.2.3` and `1.2`.
+
+The publish job waits for the tests, so a red commit never overwrites `:latest`.
+Both architectures are built on the amd64 runner without emulation: the Dockerfile's
+build stage pins itself to `$BUILDPLATFORM` and cross-compiles, and the runtime stage
+only copies a static binary in. That is the same property `rebuild.sh` relies on for
+building a Pi image from a laptop.
 
 ### Layout
 

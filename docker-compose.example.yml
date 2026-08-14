@@ -1,6 +1,6 @@
-# Example deployment. Build the image first, then deploy this file:
+# Example deployment. There is nothing to build — the image is published to the
+# GitHub Container Registry, so this file stands on its own:
 #
-#   ./rebuild.sh                 # builds dockontroler:latest on this host
 #   docker compose up -d         # or paste this file into a Portainer stack
 #
 # Read the security section of the README before exposing this anywhere. There is
@@ -9,14 +9,20 @@
 
 services:
   dockontroler:
-    # A locally built image rather than "build: ." on purpose: Portainer's stack
-    # editor has no build context, so a build there would fail. ./rebuild.sh builds
-    # and tags it. Keep Portainer's "Pull latest image" off — this tag exists only
-    # on this host, and a pull would look for it on Docker Hub.
+    # A published image rather than "build: ." on purpose: Portainer's stack
+    # editor has no build context, so a build there would fail. This one is built
+    # and pushed by .github/workflows/build.yml on every push to main, as a single
+    # multi-arch manifest — docker picks amd64 or arm64 for the host doing the
+    # pull, so a Raspberry Pi needs nothing special here.
     #
-    # Once you publish images, this becomes something like:
-    # image: ghcr.io/mkrage/dockontroler:latest
-    image: dockontroler:latest
+    # Portainer's "Pull latest image" can stay on with this tag. Pin a version
+    # instead (ghcr.io/mkrage/dockontroler:1.2.3) if you would rather decide
+    # yourself when to move.
+    #
+    # For an image you built yourself this becomes plain "dockontroler:latest",
+    # the tag ./rebuild.sh writes — and then the pull toggle has to be off, since
+    # that tag exists only on that one host.
+    image: ghcr.io/mkrage/dockontroler:latest
     container_name: dockontroler
     restart: unless-stopped
 
