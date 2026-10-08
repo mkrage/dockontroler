@@ -1,0 +1,4 @@
+# The service intentionally runs as root so it can open the standard
+# root:docker Docker socket. Re-evaluate this exception if the socket mount or
+# user model changes; every other Dockerfile misconfiguration remains gated.
+AVD-DS-0002

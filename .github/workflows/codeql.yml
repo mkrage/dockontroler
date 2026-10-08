@@ -35,6 +35,9 @@ jobs:
     name: Analyze Go
     runs-on: ubuntu-latest
     permissions:
+      # CodeQL reads the current workflow run while finalising and uploading
+      # analysis results.
+      actions: read
       contents: read
       # The one write scope, and it reaches nothing but the code scanning API.
       security-events: write

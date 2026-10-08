@@ -111,6 +111,7 @@ jobs:
         with:
           scan-type: config
           scan-ref: .
+          trivyignores: .trivyignore
           format: table
           severity: HIGH,CRITICAL
           # Fail the run. Anything below HIGH is left to the scheduled scan;
