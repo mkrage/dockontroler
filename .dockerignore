@@ -4,7 +4,9 @@
 .gitignore
 .github
 README.md
-LICENSE
+# LICENSE is deliberately not excluded: the Dockerfile copies it into the
+# runtime image under /licenses/, which is what makes the distributed binary's
+# licence terms available to whoever ends up with the image.
 assets
 docker-compose.example.yml
 docker-compose.override.yml

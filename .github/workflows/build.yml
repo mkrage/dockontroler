@@ -9,15 +9,22 @@
 # instead of building it there. Point the compose file at
 # ghcr.io/mkrage/dockontroler:latest and Portainer's "Pull latest image" can be
 # on again.
+#
+# Nothing is published that has not first passed the tests and three scans. The
+# scans here are gates, not reports: they fail the run on a known HIGH or
+# CRITICAL problem and the publish job never starts. The monitoring view of the
+# same ground — SARIF in the Security tab, SBOMs — lives in
+# vulnerability-scan.yml, which runs on a schedule rather than in this path.
 name: build
 
 on:
   push:
     branches: [main]
     tags: ["v*"]
-  # Pull requests get the tests and a build, but nothing is pushed: a fork's
-  # token has no write access to the registry, and an unreviewed branch has no
-  # business overwriting :latest.
+  # Pull requests get the tests, the same two-architecture build, and the
+  # Dockerfile and image scans. Nothing is pushed: a fork's token has no write
+  # access to the registry, and an unreviewed branch has no business overwriting
+  # :latest.
   pull_request:
   workflow_dispatch:
 
@@ -25,6 +32,11 @@ env:
   # ghcr.io wants a lowercase path. This repository already is one, so it is
   # spelled out rather than lowercased at runtime.
   IMAGE: ghcr.io/mkrage/dockontroler
+
+# Nothing is granted by default. Every job below states the scopes it needs, so
+# the token a test run or a scan holds cannot write to the registry even if the
+# step it is running turns out to be hostile.
+permissions: {}
 
 # One run per branch. A second push to main while the first is still building
 # would race to overwrite :latest, and the older one losing is the wrong way
@@ -36,8 +48,15 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The checkout action leaves the token in .git/config by default, where
+          # anything later in the job can reach it. Nothing here talks to git
+          # over the network after this point, so it is dropped.
+          persist-credentials: false
 
       # The same script you run by hand: gofmt, vet, and the suite with the race
       # detector. It runs the toolchain in a container, so there is no Go to set
@@ -46,19 +65,140 @@ jobs:
       - name: Formatting, vet and tests
         run: ./test.sh
 
+  # Known vulnerabilities in the module graph, including the Go toolchain's own
+  # advisories. Upstream's reusable workflow rather than the bare action: it
+  # already wires the scanner to the reporter and the SARIF upload, which is the
+  # fiddly part.
+  osv-scan:
+    name: OSV-Scanner
+    # Not on pull requests. The reusable workflow uploads SARIF unconditionally,
+    # which needs security-events: write — a scope a fork's token cannot be
+    # given, so the job would fail for reasons that have nothing to do with the
+    # code under review. dependency-review.yml covers what a PR introduces.
+    if: ${{ github.event_name != 'pull_request' }}
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@a345acffa64b0eaede81a3d9aae6141214d9c8fc # v2.6.0
+    permissions:
+      # upload-sarif needs this to look up the workflow run it belongs to.
+      actions: read
+      contents: read
+      security-events: write
+    with:
+      scan-args: |-
+        --recursive
+        ./
+      # Fail closed. There is something to do about every finding here: bump the
+      # dependency, or bump the Go version.
+      fail-on-vuln: true
+
+  # Misconfiguration in the Dockerfile itself. Cheap, no build required, so it
+  # runs in parallel with everything else.
+  dockerfile-scan:
+    name: Trivy (Dockerfile)
+    runs-on: ubuntu-latest
+    permissions:
+      # Read-only, and no security-events: write. This job is a gate — the exit
+      # code is the whole mechanism. SARIF for the Security tab comes from
+      # vulnerability-scan.yml, which is not on the publishing path and can
+      # afford the wider scope.
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Scan the Dockerfile for misconfigurations
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: .
+          format: table
+          severity: HIGH,CRITICAL
+          # Fail the run. Anything below HIGH is left to the scheduled scan;
+          # a HIGH misconfiguration in the file that defines the runtime is not
+          # something to publish past.
+          exit-code: "1"
+
+  # The image as it would ship. This is the only place the distroless base layer
+  # and the compiled-in Go standard library are visible: neither appears in a
+  # source scan, and both are what an attacker actually meets.
+  image-scan:
+    name: Trivy (image)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Both architectures, nothing pushed. This is the build verification that
+      # used to live in the publish job's pull request path: an arm64
+      # cross-compile that breaks should break the PR, not the release.
+      - name: Build both architectures
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Again for amd64 only, this time loaded into the local daemon so Trivy
+      # has something to open. Served entirely from the cache the step above
+      # just wrote, so it costs seconds.
+      - name: Load the amd64 image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: dockontroler:scan
+          cache-from: type=gha
+
+      - name: Scan the image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: dockontroler:scan
+          format: table
+          severity: HIGH,CRITICAL
+          # Vulnerabilities only. Trivy's secret scanner also runs by default,
+          # and on a one-file distroless image it contributes nothing but the
+          # occasional false positive — which, with exit-code 1 below, would
+          # block a release.
+          scanners: vuln
+          # A CVE with no fixed version yet cannot be acted on by bumping
+          # anything, so it does not block the release. It is still reported by
+          # the scheduled scan, where it stays visible until the base image
+          # catches up.
+          ignore-unfixed: true
+          exit-code: "1"
+
   publish:
-    needs: test
+    # Everything above has to be green. A skipped dependency counts as not
+    # green, which is what keeps publish from running on a pull request even
+    # before its own condition is looked at.
+    needs: [test, osv-scan, dockerfile-scan, image-scan]
+    # Only a real push — a branch push, or a v* tag. Not a pull request, and not
+    # a manual dispatch either: a dispatch is for re-running the checks, and a
+    # release should be traceable to a commit someone pushed rather than to a
+    # button someone clicked.
+    if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
       # What lets GITHUB_TOKEN push to ghcr.io. Nothing else is needed: no PAT,
-      # no repository secret.
+      # no repository secret. This is the only job in the workflow that holds a
+      # write scope of any kind.
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # git describe needs the tags, and the default shallow clone has none.
           fetch-depth: 0
+          persist-credentials: false
 
       # Same string rebuild.sh computes, and it ends up in the same place: the
       # first log line of the running container.
@@ -70,12 +210,10 @@ jobs:
       # purpose: the Dockerfile's build stage pins itself to $BUILDPLATFORM and
       # cross-compiles, so both architectures are built natively on the runner.
       # Emulating arm64 would be minutes instead of seconds.
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Log in to ghcr.io
-        # Skipped for pull requests, which do not push.
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -83,7 +221,7 @@ jobs:
 
       - name: Tags and labels
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ${{ env.IMAGE }}
           tags: |
@@ -96,11 +234,11 @@ jobs:
             org.opencontainers.image.description=A small web UI for the containers on one Docker host
 
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true
           build-args: VERSION=${{ steps.version.outputs.version }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -108,7 +246,8 @@ jobs:
           # and inherits its access.
           annotations: ${{ steps.meta.outputs.annotations }}
           # The Go build cache, kept between runs. Without it every run
-          # recompiles the standard library twice, once per architecture.
+          # recompiles the standard library twice, once per architecture. The
+          # scan job above has already warmed this for the same commit.
           cache-from: type=gha
           cache-to: type=gha,mode=max
           # Provenance attestations are pushed as extra manifest entries, which

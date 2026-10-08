@@ -1,0 +1,64 @@
+# Check what a pull request adds to the dependency graph before it is merged.
+#
+# Two things are looked at: known vulnerabilities in anything newly introduced,
+# and the licence it carries. docKontroler deliberately has no external Go
+# dependencies — the point of this workflow is to notice the day that changes,
+# and to make the licence of whatever arrives a conscious decision rather than
+# an accident.
+#
+# It also covers the actions used by the workflows in this directory, which are
+# part of the dependency graph too and are the more likely thing to move.
+name: dependency-review
+
+on:
+  # Only ever runs on a pull request: the action compares the base commit's
+  # dependency graph with the head's, and there is nothing to compare on a push.
+  pull_request:
+
+# Nothing is granted by default; each job asks for exactly what it needs below.
+permissions: {}
+
+concurrency:
+  group: dependency-review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    permissions:
+      # Read-only, on purpose. The action can post its summary as a pull request
+      # comment, which would need pull-requests: write; that is switched off
+      # below so the job never holds a token that can write to the PR. The
+      # findings show up in the job summary and in the check's annotations
+      # instead, which is enough to act on.
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          # A high-severity vulnerability in something the PR adds blocks it.
+          # Moderate and low are still reported, just not fatal — the alternative
+          # is a check that is red often enough to be ignored.
+          fail-on-severity: high
+
+          # A conservative permissive-only allowlist: anything that is not on it
+          # fails the check and has to be argued for explicitly. No copyleft, no
+          # source-available licences, no "it is probably fine". Dependencies
+          # whose licence the graph cannot determine are reported as unknown
+          # rather than denied, so those need a human look too.
+          allow-licenses: >-
+            MIT,
+            Apache-2.0,
+            BSD-2-Clause,
+            BSD-3-Clause,
+            ISC,
+            0BSD,
+            Unlicense
+
+          # Keep the summary in the job output. Writing it to the PR would
+          # require a write-scoped token, which is the thing being avoided here.
+          comment-summary-in-pr: never

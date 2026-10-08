@@ -1,0 +1,53 @@
+# Keeps the three things this repository depends on from quietly going stale.
+#
+# The point is not novelty. It is that the pinned action SHAs in
+# .github/workflows/ are deliberately immovable by hand — pinning is what stops
+# a compromised tag from being picked up silently, and the cost of that is that
+# nothing updates unless something updates it. Dependabot is that something: it
+# opens a pull request, the SHA and the version comment move together, and the
+# change goes through the same review and the same scans as any other.
+version: 2
+
+updates:
+  # Go modules. There is nothing in go.mod today beyond the Go directive itself,
+  # which is exactly why this is here: the first dependency to arrive should not
+  # also be the last one anybody looks at.
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "gomod"
+
+  # The Dockerfile's base images: golang:1-alpine for the build stage and
+  # gcr.io/distroless/static-debian12 for the runtime. The first floats on
+  # purpose and the second does not move often, so this is a low-traffic entry
+  # that matters a great deal the week it does fire.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "docker"
+
+  # The actions used by the workflows. The highest-traffic of the three, and the
+  # one that would otherwise rot worst, since every `uses:` is pinned to a full
+  # commit SHA.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "actions"

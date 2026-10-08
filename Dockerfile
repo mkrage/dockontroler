@@ -36,13 +36,31 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
 
 # Runtime stage. distroless/static has no shell, no package manager and no libc —
 # just CA certificates (needed for the Telegram API) and timezone data. The
-# templates and stylesheet are embedded in the binary, so this image holds exactly
-# one file.
+# templates and stylesheet are embedded in the binary, so this image holds the
+# binary plus the two licence texts below.
 FROM gcr.io/distroless/static-debian12
 
 # Runs as root by default, which is what lets it open /var/run/docker.sock
 # (root:docker, mode 660). See the README for running as a non-root user instead.
 COPY --from=build /out/dockontroler /dockontroler
+
+# Both licences that the shipped binary is covered by, at fixed paths so they can
+# be read out of the image without guessing:
+#
+#   /licenses/dockontroler/LICENSE  this project, MIT
+#   /licenses/go/LICENSE            the Go distribution, BSD-3-Clause
+#
+# The second one is not optional housekeeping. The binary is statically linked
+# and carries the Go standard library inside it, and that library's licence asks
+# for the copyright notice to travel with any redistribution in binary form.
+# Shipping the image without it was the gap.
+#
+# Copied as root-owned 0644 files, which is COPY's default — nothing here is
+# executable and nothing changes what the entrypoint can reach. Both are plain
+# text and identical on every architecture, so the arm64 manifest is unaffected
+# even though the build stage runs on the build host's platform.
+COPY --from=build /src/LICENSE /licenses/dockontroler/LICENSE
+COPY --from=build /usr/local/go/LICENSE /licenses/go/LICENSE
 
 EXPOSE 3625
 ENTRYPOINT ["/dockontroler"]
